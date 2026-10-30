@@ -1,0 +1,236 @@
+/* The home screen (Home.tsx), over the title's pitch (.title in styles.css). It's kept spare: Play
+   is the one bright thing, and everything else is quieter. */
+
+.home {
+  /* Where the ball's middle is: under the 40px header and the gap, half the ball's 72px down. The
+     centre spot goes there, and scrolls with it on a screen too short to fit it all. */
+  --spot-y: calc(max(16px, env(safe-area-inset-top)) + 40px + 12px + 36px);
+  justify-content: flex-start;
+  gap: 12px;
+  background-attachment: local;
+}
+
+/* Who's playing on the left, their level on the right, and the league's mark between them, in
+   the middle of the screen. */
+.home-top {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 40px;
+}
+
+.home-top > :first-child {
+  justify-self: start;
+}
+
+.home-top > :last-child {
+  justify-self: end;
+}
+
+.home-league {
+  height: 40px;
+}
+
+.home-top .player-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 7px 12px;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: 999px;
+  background: var(--pill);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The ball on its own, smaller, without the ring and slashes behind it. */
+.home .title-ball {
+  width: auto;
+  height: 72px;
+  background: none;
+  font-size: 40px;
+}
+
+/* The name, on two lines as on the login screen. */
+.home h1 {
+  margin: 4px 0 0;
+  font-size: clamp(40px, 12vw, 52px);
+}
+
+/* The way in, which only a wide screen lays out as one (see wide.css): on a phone its parts are the
+   screen's own. */
+.home-side {
+  display: contents;
+}
+
+/* Where the player's playing: the venue, with its name over the picture. Any room to spare goes
+   above it, so the buttons stay at the bottom. */
+.matchday {
+  position: relative;
+  flex-shrink: 0;
+  width: min(100%, 360px);
+  height: 112px;
+  margin-top: auto;
+  overflow: hidden;
+  padding: 0;
+  border: 2px solid rgb(76 195 255 / 0.55);
+  border-radius: 18px;
+  background: var(--navy);
+  box-shadow: 0 10px 22px rgb(2 10 60 / 0.45);
+  color: #fff;
+  text-align: left;
+  transition: transform 80ms ease;
+}
+
+.matchday:active {
+  transform: translateY(2px);
+}
+
+.matchday .venue-picture {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  aspect-ratio: auto;
+}
+
+.matchday .venue-picture img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Navy from the left, where the writing is. */
+.matchday::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgb(2 35 92 / 0.92) 0, rgb(2 35 92 / 0.6) 45%, transparent);
+  content: "";
+}
+
+.matchday-text,
+.matchday-change {
+  position: absolute;
+  z-index: 1;
+}
+
+.matchday-text {
+  top: 50%;
+  left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  transform: translateY(-50%);
+}
+
+.matchday-text small {
+  color: var(--teal);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.matchday-text strong {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 20px;
+  line-height: 1.05;
+  text-shadow: 0 2px 6px rgb(2 10 60 / 0.6);
+  text-transform: uppercase;
+}
+
+/* Only once there is one. */
+.matchday-best {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+  color: var(--soft);
+  font-size: 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.matchday-change {
+  right: 12px;
+  bottom: 9px;
+  color: rgb(255 255 255 / 0.8);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.home .title-actions {
+  gap: 10px;
+  margin-bottom: 1vh;
+}
+
+.home .play-button {
+  width: min(100%, 340px);
+  font-size: 26px;
+}
+
+/* How to play, in one quiet line under the button. */
+.home-how {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* The way to the tutorial, at the end of the controls' line, as a link. */
+.home-learn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--teal);
+  font: inherit;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* The way to everything else: a pair of navy tiles as wide as Play, which still stands out. */
+.home-more {
+  display: flex;
+  gap: 10px;
+  width: min(100%, 340px);
+}
+
+/* The icon over the word, so the pair fits side by side on the narrowest phone. */
+.home-more .home-tile {
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 6px;
+}
+
+.home-more .icon {
+  font-size: 22px;
+}
+
+/* A navy tile, to stand off the floodlit blues: the home screen's Leaderboard and Customise, and
+   the level results' buttons (LevelResults.tsx). */
+.home-tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 13px 10px;
+  background: linear-gradient(#0f45a3, var(--navy) 60%, #021b4a);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.2),
+    inset 0 0 0 1px rgb(76 195 255 / 0.18),
+    0 4px 0 #010f2e,
+    0 8px 16px rgb(2 10 60 / 0.35);
+  color: #fff;
+  font-size: 13px;
+}

@@ -1,0 +1,301 @@
+/* Signing in, the leaderboard, and where they show up on the other screens. */
+
+/* Signing in, over the title's pitch: the title, a line, the name and the way in. */
+.login {
+  /* Where the ball's middle is: level with the title screen's, as far down as its 40px header and
+     the gap under it, half the ball's 72px down. Moving between them, the ball and the pitch's
+     markings hold still (see glide in App.tsx). */
+  --spot-y: calc(max(16px, env(safe-area-inset-top)) + 40px + 12px + 36px);
+}
+
+/* The ball and the name centred, each as wide as it is, as on the title screen. */
+.login .title-top {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 52px;
+}
+
+/* The ball on its own, smaller, without the ring and slashes behind it. */
+.login .title-ball {
+  width: auto;
+  height: 72px;
+  background: none;
+  font-size: 40px;
+}
+
+.login h1 {
+  font-size: clamp(48px, 14vw, 60px);
+}
+
+/* Just the field and the button, straight on the page. */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(100%, 340px);
+  text-align: left;
+}
+
+/* Drawn light whatever the page's scheme. */
+.login-form input {
+  color-scheme: light;
+  padding: 15px 16px;
+  border: 2px solid transparent;
+  border-radius: 14px;
+  background: #fff;
+  color: var(--navy);
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 18px;
+}
+
+.login-form input:focus {
+  border-color: var(--teal);
+  outline: none;
+}
+
+.login-form input[aria-invalid="true"] {
+  border-color: var(--red);
+}
+
+.login-form .play-button {
+  width: 100%;
+}
+
+.login-form .play-button:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+/* A light red, to read on the navy. */
+.login-error {
+  margin: 0;
+  color: #ff9b9b;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.text-button.login-guest {
+  margin-bottom: 2vh;
+  padding: 10px 16px;
+  font-size: 15px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+/* On the full-time screen: where the game put the player. */
+.online-result {
+  margin: 0;
+  padding: 6px 12px;
+  border: 1px solid var(--panel-rim);
+  border-radius: 999px;
+  background: var(--panel-face);
+  color: var(--soft);
+  font-weight: 800;
+}
+
+.online-result.ranked {
+  border-color: rgb(0 232 218 / 0.35);
+  background: rgb(0 232 218 / 0.15);
+  color: var(--teal);
+}
+
+/* The leaderboard. */
+.leaderboard {
+  gap: 12px;
+}
+
+.live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: var(--pill);
+  color: #5fe08a;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.live::before {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  content: "";
+  animation: blink 1.6s ease-in-out infinite;
+}
+
+.live.offline {
+  color: #ff8a80;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+/* The venues to pick a free-play board from, in a row that scrolls sideways past the screen's edges. */
+.board-venues {
+  display: flex;
+  gap: 6px;
+  margin: 0 -16px;
+  padding: 0 16px 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.board-venue {
+  flex: none;
+  padding: 7px 12px;
+  border: 1px solid var(--panel-rim);
+  border-radius: 999px;
+  background: var(--pill);
+  color: var(--soft);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.board-venue.active {
+  border-color: transparent;
+  background: var(--teal);
+  color: var(--navy);
+}
+
+.board-status {
+  margin: 24px 0;
+  color: var(--soft);
+  text-align: center;
+}
+
+.board {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.board-mine {
+  padding-top: 10px;
+  border-top: 1px dashed var(--panel-line);
+}
+
+.board-row {
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 2px solid var(--panel-rim);
+  border-radius: 12px;
+  background: var(--panel-face);
+  box-shadow: var(--panel-lift);
+}
+
+.board-row.me {
+  border-color: var(--teal);
+  box-shadow:
+    0 0 0 1px rgb(0 232 218 / 0.35),
+    0 0 16px rgb(0 232 218 / 0.25);
+}
+
+.board-row.moved {
+  animation: flash 1.2s ease-out;
+}
+
+@keyframes flash {
+  from {
+    background: rgb(0 232 218 / 0.35);
+  }
+}
+
+.board-rank {
+  display: grid;
+  place-items: center;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 18px;
+  text-align: center;
+}
+
+/* Below the medals, a rank is on a navy disc. */
+.rank-badge {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(#0a3480, var(--navy));
+  box-shadow: inset 0 0 0 1px rgb(0 232 218 / 0.3);
+  font-size: 15px;
+}
+
+.board-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.board-name em {
+  color: var(--teal);
+  font-style: normal;
+}
+
+.board-name small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.board-score {
+  color: var(--teal);
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.board-score small {
+  font-size: 11px;
+}
+
+.board-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 8px;
+  color: var(--soft);
+  text-align: center;
+}
+
+.board-footer p {
+  margin: 0;
+}
+
+.text-button.inline {
+  padding: 0;
+  color: var(--teal);
+  text-decoration: underline;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live::before,
+  .board-row.moved {
+    animation: none;
+  }
+}

@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <title>Venue preview</title>
+    <style>
+      body {
+        font:
+          14px/1.4 system-ui,
+          sans-serif;
+        margin: 16px;
+        background: #0b1a3a;
+        color: #fff;
+      }
+      main {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      figure {
+        margin: 0;
+      }
+      canvas {
+        display: block;
+        border-radius: 8px;
+      }
+      code {
+        color: #7ff3ff;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Venue preview</h1>
+    <p>
+      Every venue as the game draws it on a phone held upright, from the game's own camera, a few
+      seconds into free play with things in flight, its twist going and the player heading every
+      ball. Options in the address: <code>?venue=park,moon</code> for some venues only,
+      <code>?at=12000</code> for how far into the round, in milliseconds (9,000 by default),
+      <code>?size=844x390</code> for another screen, in CSS pixels (390×844 by default),
+      <code>?kit=rossoneri</code>, <code>?seed=7</code>, and <code>?placeholder</code> for the
+      stand-in player the game draws without <code>src/game/models/player.glb</code>.
+      <code>?quality=low</code> (or <code>medium</code>) draws them as a phone on that tier would
+      (see <code>src/game/quality.ts</code>). <code>?idle</code> leaves the player standing still in
+      the middle, to be knocked out: with a late enough <code>?at</code>, the picture's of them down
+      and the camera eased back. Each caption says how many draw calls its frame took, shadows and
+      all, and how long the venue took to build (in a browser without a GPU, mostly the time it
+      takes to bake its lighting).
+    </p>
+    <main id="venues"></main>
+    <script type="module">
+      import { kitById } from "/src/kits.ts";
+      import { freePlayAt } from "/src/levels.ts";
+      import { VENUES } from "/src/venues.ts";
+      import {
+        arrivalOf,
+        decoyPool,
+        duck,
+        DUCK_MS,
+        isHeadable,
+        isLeap,
+        isOver,
+        isSkimmed,
+        jump,
+        JUMP_MS,
+        LANES,
+        newRound,
+        pointHead,
+        seededRandom,
+        step,
+      } from "/src/game/engine.ts";
+      import { crowdReady } from "/src/game/creatures.ts";
+      import { loadPlayerModel } from "/src/game/player.ts";
+      import { roundQuality } from "/src/game/quality.ts";
+      import { createGameScene } from "/src/game/scene.ts";
+      import { sceneryReady } from "/src/game/scenery.ts";
+
+      // Counts the draw calls each frame makes, the shadow map's as well as the picture's.
+      const drawn = { calls: 0 };
+      for (const name of [
+        "drawElements",
+        "drawArrays",
+        "drawElementsInstanced",
+        "drawArraysInstanced",
+      ]) {
+        const draw = WebGL2RenderingContext.prototype[name];
+        WebGL2RenderingContext.prototype[name] = function (...args) {
+          drawn.calls++;
+          return draw.apply(this, args);
+        };
+      }
+
+      const query = new URLSearchParams(location.search);
+      const wanted = query.get("venue")?.split(",");
+      const at = Number(query.get("at") ?? 9000);
+      const [width, height] = (query.get("size") ?? "390x844").split("x").map(Number);
+      const kit = kitById(query.get("kit") ?? "gold");
+      const seed = Number(query.get("seed") ?? 7);
+      const model = query.has("placeholder") ? undefined : await loadPlayerModel();
+      // Each crowd's built from Meshy's figure once it's loaded, as the game waits for it to be.
+      await Promise.all(VENUES.map((venue) => crowdReady(venue.crowd)));
+      const idle = query.has("idle");
+      const ratio = Math.min(devicePixelRatio, 2);
+      /** How big each picture shows on this page, so a row of them fits. */
+      const shown = Math.min(width, 260) / width;
+
+      const STEP_MS = 1000 / 60;
+
+      /**
+       * Where a player who heads every ball points their head: at a ball that's about to reach
+       * them, or anywhere nothing will hit them, staying put if they can. As the engine's own
+       * perfect player does (see playPerfectly in engine.ts).
+       */
+      const laneFor = (round) => {
+        const arriving = round.items.filter(
+          (i) => !i.outcome && arrivalOf(i) <= round.now + STEP_MS,
+        );
+        const ball = arriving.find(isHeadable);
+        if (ball) return ball.lane;
+        const blocked = (lane) =>
+          arriving.some((i) => {
+            if (i.kind !== "hurdle") return i.lane === lane;
+            const lanes = i.lanes ?? LANES;
+            return lanes.length < LANES.length && lanes.includes(lane);
+          });
+        return [round.lane, ...LANES].find((lane) => !blocked(lane)) ?? round.lane;
+      };
+
+      /** Plays the round to `at`, heading every ball, and returns it with what last happened. */
+      const playTo = (venue, rules) => {
+        const random = seededRandom(seed);
+        let round = newRound(decoyPool(venue.decoys), rules);
+        let events = [];
+        while (round.now < at && !isOver(round)) {
+          if (idle) {
+            const result = step(round, STEP_MS, random);
+            round = result.round;
+            events = [...events, ...result.events].slice(-20);
+            continue;
+          }
+          round = pointHead(round, laneFor(round));
+          const due = (wanted, ms) =>
+            round.items.some((i) => {
+              if (i.outcome || !wanted(i)) return false;
+              const until = arrivalOf(i) - round.now;
+              return until <= ms / 2 && until > ms / 2 - STEP_MS;
+            });
+          if (due(isLeap, JUMP_MS)) round = jump(round);
+          if (due(isSkimmed, DUCK_MS)) round = duck(round);
+          const result = step(round, STEP_MS, random);
+          round = result.round;
+          events = [...events, ...result.events].slice(-20);
+        }
+        return { round, events };
+      };
+
+      const canvas = document.createElement("canvas");
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      const list = document.getElementById("venues");
+      for (const venue of VENUES.filter((v) => !wanted || wanted.includes(v.id))) {
+        const rules = freePlayAt(venue.id);
+        await sceneryReady(venue.id);
+        const started = performance.now();
+        const scene = createGameScene(canvas, {
+          venue,
+          name: "SAM THE MAN",
+          number: 8,
+          kit,
+          model,
+          rules,
+          seed,
+          ...(query.has("quality") ? { quality: roundQuality() } : {}),
+        });
+        scene.resize(width, height);
+        const built = Math.round(performance.now() - started);
+        const { round, events } = playTo(venue, rules);
+        // Once with everything that's happened, so the crowd's out and cheering, then a few short
+        // frames for the player and the twist to settle, after the grass photos have loaded.
+        scene.render(round, events, 1000);
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        for (let i = 0; i < 3; i++) {
+          drawn.calls = 0;
+          scene.render(round, [], STEP_MS);
+        }
+        const calls = drawn.calls;
+
+        const out = document.createElement("canvas");
+        out.width = Math.round(width * ratio);
+        out.height = Math.round(height * ratio);
+        out.style.width = `${width * shown}px`;
+        out.getContext("2d").drawImage(canvas, 0, 0, out.width, out.height);
+        scene.dispose();
+        const figure = document.createElement("figure");
+        const caption = document.createElement("figcaption");
+        caption.textContent = `${venue.name}, streak ${round.streak}, ${calls} draw calls, built in ${built} ms`;
+        figure.append(out, caption);
+        list.append(figure);
+      }
+      document.body.dataset.ready = "true";
+    </script>
+  </body>
+</html>

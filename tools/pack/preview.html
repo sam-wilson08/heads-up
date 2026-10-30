@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Pack preview</title>
+  </head>
+  <body>
+    <div id="root" class="stage"></div>
+    <script type="module">
+      // Opens a pack with whatever's named in the address, over and over, to see the show for
+      // each rarity without playing a game first: ?reward=kit:viola (legendary), kit:azzurri
+      // (rare), kit:rossoneri (common), venue:space, venue:moon, venue:beach, or none for a
+      // player with everything. ?kit= dresses the venue's crowd. Any button opens it again.
+      import { createElement } from "react";
+      import { createRoot } from "react-dom/client";
+      import "/src/styles.css";
+      import { DEFAULT_PROFILE } from "/src/profile.ts";
+      import { rewardByKey } from "/src/progression.ts";
+      import { Pack } from "/src/ui/Pack.tsx";
+
+      const params = new URLSearchParams(location.search);
+      const named = params.get("reward") ?? "kit:viola";
+      const rewards = {
+        progress: { xp: 0, packed: [] },
+        xp: 0,
+        levelBefore: 1,
+        levelAfter: 1,
+        levelled: [],
+        pack: named === "none" ? undefined : rewardByKey(named),
+      };
+      const profile = { ...DEFAULT_PROFILE, kit: params.get("kit") ?? "gold" };
+      const root = createRoot(document.getElementById("root"));
+      let round = 0;
+      const show = () =>
+        root.render(
+          createElement(Pack, {
+            key: round++,
+            rewards,
+            profile,
+            onUse: show,
+            onAgain: show,
+            onMenu: show,
+          }),
+        );
+      show();
+    </script>
+  </body>
+</html>

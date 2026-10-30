@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <title>Build player.glb</title>
+    <style>
+      body {
+        font:
+          16px/1.5 system-ui,
+          sans-serif;
+        margin: 32px;
+        max-width: 720px;
+      }
+      pre {
+        background: #f2f2f2;
+        padding: 12px;
+        white-space: pre-wrap;
+      }
+      canvas {
+        background: #8fc3ea;
+        display: block;
+        margin-top: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Build player.glb</h1>
+    <p>
+      Turns Meshy's FBX and textures in <code>tools/player/in/</code> into one
+      <code>player.glb</code>, then downloads it. See ASSETS.md.
+    </p>
+    <pre id="log">Building…</pre>
+    <script type="module">
+      import * as THREE from "three";
+      import { FBXLoader } from "three/addons/loaders/FBXLoader.js";
+      import { GLTFExporter } from "three/addons/exporters/GLTFExporter.js";
+      import { mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
+
+      const IN = "/tools/player/in/";
+      const log = (line) => (document.getElementById("log").textContent += `\n${line}`);
+
+      /** Draws the player from the front, the back and the side, to check which way it faces. */
+      const preview = (object) => {
+        const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+        renderer.setSize(720, 320);
+        renderer.setScissorTest(true);
+        document.body.append(renderer.domElement);
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x8fc3ea);
+        scene.add(new THREE.HemisphereLight(0xffffff, 0x557744, 2), object);
+        const sun = new THREE.DirectionalLight(0xffffff, 2);
+        sun.position.set(2, 4, 3);
+        scene.add(sun);
+        const box = new THREE.Box3().setFromObject(object);
+        const centre = box.getCenter(new THREE.Vector3());
+        const height = box.getSize(new THREE.Vector3()).y;
+        const views = [
+          ["+z", new THREE.Vector3(0, 0, 1)],
+          ["-z", new THREE.Vector3(0, 0, -1)],
+          ["+x", new THREE.Vector3(1, 0, 0)],
+        ];
+        views.forEach(([, direction], i) => {
+          const camera = new THREE.PerspectiveCamera(35, 240 / 320, height / 100, height * 10);
+          camera.position.copy(centre).addScaledVector(direction, height * 2.2);
+          camera.lookAt(centre);
+          renderer.setViewport(i * 240, 0, 240, 320);
+          renderer.setScissor(i * 240, 0, 240, 320);
+          renderer.render(scene, camera);
+        });
+        log(`Preview, left to right: camera on ${views.map(([name]) => name).join(", ")}`);
+      };
+
+      try {
+        const player = await new FBXLoader().loadAsync(`${IN}player.fbx`);
+
+        const textures = new THREE.TextureLoader();
+        const texture = async (file, colour) => {
+          const t = await textures.loadAsync(`${IN}${file}`);
+          t.colorSpace = colour ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+          t.userData.mimeType = "image/jpeg";
+          return t;
+        };
+        const material = new THREE.MeshStandardMaterial({
+          name: "player",
+          map: await texture("basecolor.png", true),
+          normalMap: await texture("normal.png", false),
+          roughnessMap: await texture("roughness.png", false),
+          metalnessMap: await texture("metallic.png", false),
+          roughness: 1,
+          metalness: 1,
+        });
+
+        // Meshy exports a vertex per triangle corner; merging them makes the file much smaller.
+        let vertices = 0;
+        player.traverse((o) => {
+          if (!o.isMesh) return;
+          o.geometry = mergeVertices(o.geometry, 1e-4);
+          o.material = material;
+          vertices += o.geometry.attributes.position.count;
+        });
+        player.name = "player";
+
+        const size = new THREE.Box3().setFromObject(player).getSize(new THREE.Vector3());
+        log(
+          `Size: ${size
+            .toArray()
+            .map((n) => n.toFixed(2))
+            .join(" × ")} (x × y × z)`,
+        );
+
+        const glb = await new GLTFExporter().parseAsync(player, {
+          binary: true,
+          maxTextureSize: 1024,
+        });
+        log(`${vertices} vertices, ${Math.round(glb.byteLength / 1024)} KB`);
+        preview(player);
+
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(new Blob([glb], { type: "model/gltf-binary" }));
+        link.download = "player.glb";
+        link.textContent = "Download player.glb again";
+        document.body.append(link);
+        link.click();
+        log("Downloaded player.glb: move it to src/game/models/.");
+      } catch (error) {
+        log(`Failed: ${error}`);
+      }
+    </script>
+  </body>
+</html>

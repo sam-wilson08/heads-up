@@ -1,0 +1,517 @@
+/* The tutorial over the play (TutorialHud.tsx), in the scorebug's broadcast style: what to do on a
+   banner near the top, under dots counting the steps, a finger over the pitch showing the move,
+   and Skip in the corner. None of it stands in the way of a swipe or a tap, but for Skip. */
+
+.lesson {
+  position: absolute;
+  top: max(14px, env(safe-area-inset-top));
+  right: 60px;
+  left: 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.lesson-steps {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lesson-steps li {
+  width: 22px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.3);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.3);
+}
+
+.lesson-steps li.done {
+  background: var(--teal);
+}
+
+.lesson-steps li.now {
+  background: #ffffff;
+}
+
+/* What to do, on the hint's slanted banner, a little bigger. */
+.lesson-say {
+  margin: 0;
+  padding: 10px 22px 11px;
+  background:
+    linear-gradient(var(--teal), var(--teal)) top / 100% 3px no-repeat,
+    linear-gradient(#16379c, #0a1c63 60%, #071351);
+  clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+  color: #ffffff;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 17px;
+  letter-spacing: 0.04em;
+  line-height: 1.25;
+  text-align: center;
+  text-transform: uppercase;
+  animation: lesson-in 260ms ease-out;
+}
+
+.lesson-say.nice {
+  background:
+    linear-gradient(#ffffff, #ffffff) top / 100% 3px no-repeat,
+    linear-gradient(#5ff5ec, var(--teal) 60%, var(--teal-deep));
+  color: var(--navy);
+  font-size: 22px;
+}
+
+.lesson-say.again {
+  background:
+    linear-gradient(#ff9a9d, #ff9a9d) top / 100% 3px no-repeat,
+    linear-gradient(#e5484d, #b3141b 60%, #8c0d13);
+}
+
+@keyframes lesson-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.96);
+  }
+}
+
+/* A fingertip on the screen, over the pitch, making the move: a drag one way across the player's
+   legs, following them from lane to lane (--lane, from -1 to 1, each lane about 5.8% of the
+   screen's height across, as the camera sees them), or a tap down in the bottom left, where the
+   left thumb rests. Anywhere works, but these are where a thumb's handiest. */
+.lesson-finger {
+  position: absolute;
+  top: 52%;
+  left: 50%;
+  width: 52px;
+  height: 52px;
+  margin: -26px 0 0 -26px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.92);
+  box-shadow:
+    0 0 0 7px rgb(255 255 255 / 0.28),
+    0 8px 18px rgb(0 0 0 / 0.35);
+  pointer-events: none;
+}
+
+.lesson-finger.swipe-left,
+.lesson-finger.swipe-right {
+  top: 86%;
+  left: calc(50% + var(--lane, 0) * 5.8vh);
+  left: calc(50% + var(--lane, 0) * 5.8dvh);
+}
+
+.lesson-finger.swipe-left {
+  animation: lesson-swipe-left 1.2s ease-in-out infinite;
+}
+
+.lesson-finger.swipe-right {
+  animation: lesson-swipe-right 1.2s ease-in-out infinite;
+}
+
+@keyframes lesson-swipe-left {
+  0% {
+    opacity: 0;
+    transform: translateX(70px);
+  }
+
+  15% {
+    opacity: 1;
+    transform: translateX(70px);
+  }
+
+  70% {
+    opacity: 1;
+    transform: translateX(-70px);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(-70px);
+  }
+}
+
+@keyframes lesson-swipe-right {
+  0% {
+    opacity: 0;
+    transform: translateX(-70px);
+  }
+
+  15% {
+    opacity: 1;
+    transform: translateX(-70px);
+  }
+
+  70% {
+    opacity: 1;
+    transform: translateX(70px);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(70px);
+  }
+}
+
+/* A tap: pressed down, and a ring spreading from it. */
+.lesson-finger.tap {
+  top: 84%;
+  left: 17%;
+  animation: lesson-tap 1s ease-in-out infinite;
+}
+
+/* On a wide window, such as a tablet's on its side, the bottom left of the window, where the left
+   thumb rests, rather than of the column over the lanes, which is near the middle (see wide.ts). */
+.stage.wide .lesson-finger.tap {
+  left: calc(50% - 50vw + clamp(66px, 8vw, 120px));
+}
+
+.lesson-finger.tap::after {
+  position: absolute;
+  inset: -7px;
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  content: "";
+  animation: lesson-ring 1s ease-out infinite;
+}
+
+@keyframes lesson-tap {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  35% {
+    transform: scale(0.82);
+  }
+}
+
+@keyframes lesson-ring {
+  0%,
+  30% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+
+  40% {
+    opacity: 0.9;
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(2.1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lesson-finger.swipe-left {
+    animation: none;
+    transform: translateX(-40px);
+  }
+
+  .lesson-finger.swipe-right {
+    animation: none;
+    transform: translateX(40px);
+  }
+
+  .lesson-finger.tap,
+  .lesson-finger.tap::after {
+    animation: none;
+  }
+}
+
+.lesson-skip {
+  position: absolute;
+  top: max(8px, env(safe-area-inset-top));
+  right: 8px;
+  height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--hud-rim);
+  border-radius: 9px;
+  background: var(--hud-face);
+  box-shadow: var(--hud-shadow);
+  color: #ffffff;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* How to hold the phone, before the first step, and every step done: a card over the pitch. */
+.lesson-cover {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgb(8 10 50 / 0.55);
+  animation: lesson-in 300ms ease-out;
+}
+
+.lesson-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: min(100%, 340px);
+  padding: 26px 22px 22px;
+  border: 1px solid var(--panel-rim);
+  border-radius: 20px;
+  background: var(--panel-face);
+  box-shadow: 0 16px 40px rgb(2 10 60 / 0.5);
+  color: #ffffff;
+  text-align: center;
+}
+
+.lesson-card h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 28px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.lesson-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.lesson-card .play-button {
+  width: 100%;
+}
+
+/* How to hold the phone: one thumb tapping in the bottom left, the other swiping across the
+   middle, where the player's legs are. */
+.lesson-phone {
+  position: relative;
+  width: 150px;
+  height: 210px;
+  overflow: hidden;
+  border: 3px solid rgb(255 255 255 / 0.85);
+  border-radius: 22px;
+  background: linear-gradient(#3f9a4a, #23733a);
+  box-shadow: inset 0 0 0 4px rgb(2 10 60 / 0.6);
+}
+
+.lesson-thumb {
+  position: absolute;
+  bottom: 48px;
+  width: 30px;
+  height: 30px;
+  margin-left: -15px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.92);
+  box-shadow:
+    0 0 0 5px rgb(255 255 255 / 0.28),
+    0 6px 12px rgb(0 0 0 / 0.35);
+}
+
+.lesson-thumb.swipe {
+  left: 64%;
+  animation: lesson-thumb-swipe 1.4s ease-in-out infinite;
+}
+
+.lesson-thumb.tap {
+  left: 24%;
+  animation: lesson-tap 1s ease-in-out infinite;
+}
+
+.lesson-thumb.tap::after {
+  position: absolute;
+  inset: -5px;
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  content: "";
+  animation: lesson-ring 1s ease-out infinite;
+}
+
+@keyframes lesson-thumb-swipe {
+  0%,
+  100% {
+    transform: translateX(-14px);
+  }
+
+  50% {
+    transform: translateX(14px);
+  }
+}
+
+.lesson-thumb-label {
+  position: absolute;
+  bottom: 16px;
+  width: 54px;
+  margin-left: -27px;
+  color: #ffffff;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.lesson-thumb-label.swipe {
+  left: 64%;
+}
+
+.lesson-thumb-label.tap {
+  left: 24%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lesson-thumb.swipe,
+  .lesson-thumb.tap,
+  .lesson-thumb.tap::after {
+    animation: none;
+  }
+}
+
+/* With the keys: a key, as on a keyboard, pressed. In the play, the key for the move, where a
+   finger would be, pressed over and over; on the first card, the keys for moving and jumping. */
+.keycap {
+  display: inline-grid;
+  box-sizing: border-box;
+  place-items: center;
+  min-width: 48px;
+  height: 46px;
+  padding: 0 12px;
+  border-radius: 9px;
+  background: #ffffff;
+  box-shadow:
+    0 5px 0 #aab4d8,
+    0 9px 18px rgb(0 0 0 / 0.35);
+  color: var(--navy);
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.keycap.wide {
+  min-width: 128px;
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.lesson-key {
+  position: absolute;
+  top: 86%;
+  left: 50%;
+  translate: -50% -50%;
+  pointer-events: none;
+  animation: lesson-key 1s ease-in-out infinite;
+}
+
+@keyframes lesson-key {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    box-shadow:
+      0 5px 0 #aab4d8,
+      0 9px 18px rgb(0 0 0 / 0.35);
+  }
+
+  30% {
+    transform: translateY(4px);
+    box-shadow:
+      0 1px 0 #aab4d8,
+      0 4px 10px rgb(0 0 0 / 0.35);
+  }
+}
+
+.lesson-keys {
+  display: flex;
+  align-items: flex-start;
+  gap: 22px;
+  padding: 8px 0 4px;
+}
+
+.lesson-keys > span {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.lesson-keys-move {
+  width: 112px;
+}
+
+.lesson-keys small {
+  flex-basis: 100%;
+  margin-top: 6px;
+  color: #ffffff;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lesson-key {
+    animation: none;
+  }
+}
+
+/* Lives and stamina: the hearts and the jumps' bars, as the play's strip draws them (styles.css),
+   only bigger, each beside what it means. */
+.lesson-rule {
+  display: grid;
+  grid-template-columns: 76px 1fr;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+}
+
+.lesson-card .lesson-rule p {
+  font-size: 14px;
+}
+
+.lesson-rule strong {
+  color: #ffffff;
+}
+
+.lesson-hearts,
+.lesson-legs {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+}
+
+.lesson-hearts .life {
+  font-size: 22px;
+}
+
+.lesson-legs .leg {
+  width: 20px;
+  height: 9px;
+}
+
+/* On a short screen, the cards close up, so the longest still fits without scrolling. */
+@media (max-height: 640px) {
+  .lesson-card {
+    gap: 10px;
+    padding: 18px 16px 16px;
+  }
+
+  .lesson-card h2 {
+    font-size: 22px;
+  }
+
+  .lesson-card .lesson-rule p {
+    font-size: 13px;
+  }
+}

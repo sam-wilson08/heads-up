@@ -1,0 +1,1475 @@
+/* Montserrat, the nearest open font to Serie A's own lettering: a heavy geometric sans with a strong
+   italic, from 500 to 900, upright and italic, kept with the game (see assets/fonts). */
+@font-face {
+  font-family: Montserrat;
+  font-style: normal;
+  font-weight: 500 900;
+  font-display: swap;
+  src: url("./assets/fonts/montserrat-latin.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: Montserrat;
+  font-style: italic;
+  font-weight: 500 900;
+  font-display: swap;
+  src: url("./assets/fonts/montserrat-latin-italic.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+:root {
+  /* The game's colours: a floodlit night's navy, indigo, violet and blues, and the teal that
+     picks things out. */
+  --navy: #02235c;
+  --indigo: #1c0f5e;
+  --violet: #2b00e5;
+  --royal: #172eff;
+  --blue: #005bff;
+  --teal: #00e8da;
+  --teal-deep: #00a3b2;
+  /* A light blue, for edges and highlights. */
+  --ring: #4cc3ff;
+  /* Serie A's azure, and the deep blue its titles stand out from, a step at a time. */
+  --azure: #5cc6ff;
+  --extrude:
+    0 2px 0 #2c5be0, 0 4px 0 #2550cc, 0 6px 0 #1e44b3, 0 8px 0 #183996,
+    0 16px 26px rgb(2 10 60 / 0.6);
+  /* The dark pill labels sit in. */
+  --pill: rgb(24 14 64 / 0.88);
+  /* The pitch's markings behind the title and full time screens: chalk, faint under floodlights. */
+  --chalk: rgb(255 255 255 / 0.08);
+  --panel: #171d88;
+  --panel-line: #2f3fd6;
+  /* A panel as the menus draw it: lit a little from above, edged with a fine rim of light, and
+     lifted off the page by a soft shadow. */
+  --panel-face: linear-gradient(180deg, #1d25a0, #151a80);
+  --panel-rim: rgb(132 150 255 / 0.2);
+  --panel-lift: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 6px 16px rgb(6 3 36 / 0.32);
+  /* Lettering a step down from white, and another, on the panels. */
+  --soft: #d4d9ff;
+  --muted: #a3adf5;
+  /* Lettering on white. */
+  --ink-soft: #4b5394;
+  /* Medals and the rarest packs stay gold. */
+  --gold: #f5c518;
+  --green: #2fbf5b;
+  --red: #e5484d;
+  /* The play's HUD, a broadcast scorebug: deep navy panels, solid enough to read over a white
+     sky or snow, edged in light blue and lifted off the picture by a firm shadow. */
+  --hud-face: linear-gradient(180deg, #16379c, #0a1c63 52%, #071351);
+  --hud-rim: rgb(76 195 255 / 0.38);
+  --hud-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.16), 0 2px 0 rgb(1 6 32 / 0.5), 0 8px 18px rgb(1 6 40 / 0.4);
+  --display: Montserrat, "Arial Black", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --body: Montserrat, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  color-scheme: dark;
+  font-family: var(--body);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: #0e0838;
+  overflow: hidden;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+/* Every button shows where the keyboard is with a teal ring, and only then. */
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+}
+
+/* A phone-shaped column: the whole screen on a phone, centred on anything wider. With ?wide (see
+   wide.ts and wide.css), every screen fills the window instead. */
+.stage {
+  position: relative;
+  width: min(100vw, 480px);
+  height: 100vh;
+  height: 100dvh;
+  margin: 0 auto;
+  overflow: hidden;
+  background: var(--indigo);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.stage.wide {
+  width: 100vw;
+}
+
+/* What's drawn over the play: the scoreboard, the shouts, the tutorial and the twists' signs. On a
+   phone, the whole screen; on a wide one, a column as wide as a phone held upright over the lanes
+   in the middle, so it's all laid out just as on a phone (see columnWidth in wide.ts). */
+.play-column {
+  position: absolute;
+  inset: 0;
+}
+
+.stage.wide .play-column {
+  right: auto;
+  left: 50%;
+  width: min(100%, max(360px, 46.2dvh));
+  transform: translateX(-50%);
+}
+
+/* A card that dims the play behind it (see game/TutorialHud.tsx) dims all of it, either side of the
+   column too: from the column's middle, half the window each way. */
+.stage.wide .play-column .lesson-cover {
+  right: calc(50% - 50vw);
+  left: calc(50% - 50vw);
+}
+
+/* The game across the whole display, or back in its window: on a wide screen, in the corner. */
+.play-fullscreen {
+  position: absolute;
+  top: max(8px, env(safe-area-inset-top));
+  right: max(12px, env(safe-area-inset-right));
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--hud-rim);
+  border-radius: 9px;
+  background: var(--hud-face);
+  box-shadow: var(--hud-shadow);
+  color: #fff;
+}
+
+.play-fullscreen svg {
+  width: 20px;
+  height: 20px;
+}
+
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+  overflow-y: auto;
+}
+
+.button {
+  border: 0;
+  border-radius: 14px;
+  font-family: var(--display);
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition:
+    transform 80ms ease,
+    filter 120ms ease;
+}
+
+.button:active {
+  transform: translateY(2px);
+}
+
+@media (hover: hover) {
+  .button:hover:not(:disabled) {
+    filter: brightness(1.08);
+  }
+}
+
+/* The way into a game, and the other buttons that move it on: teal, with navy lettering, lit
+   along the top edge like a glossy tile. */
+.play-button,
+.again-button {
+  background: linear-gradient(#7bfaf2, var(--teal) 55%, #00d6c9);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.6),
+    0 5px 0 var(--teal-deep),
+    0 10px 20px rgb(0 40 80 / 0.3);
+  color: var(--navy);
+}
+
+.play-button:active,
+.again-button:active {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.6),
+    0 3px 0 var(--teal-deep),
+    0 6px 14px rgb(0 40 80 / 0.3);
+}
+
+/* A dark pill with white lettering, as a broadcast labels its graphics. */
+.eyebrow {
+  margin: 0;
+  padding: 6px 14px;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  border-radius: 999px;
+  background: var(--pill);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+/* Title */
+
+/* The middle of a pitch at night: the title's ball on the centre spot, with the centre circle round
+   it and the halfway line through it in faint chalk, under floodlit navy that falls away to the
+   edges. Each screen sets --spot-y to how far down its ball sits. */
+.title {
+  background:
+    radial-gradient(
+      circle at 50% var(--spot-y, 50%),
+      transparent 149px,
+      var(--chalk) 150px 153px,
+      transparent 154px
+    ),
+    linear-gradient(
+      transparent calc(var(--spot-y, 50%) - 1.5px),
+      var(--chalk) 0 calc(var(--spot-y, 50%) + 1.5px),
+      transparent 0
+    ),
+    radial-gradient(130% 75% at 50% var(--spot-y, 50%), #142a7c, #070a2a 75%);
+}
+
+.title {
+  justify-content: space-between;
+  text-align: center;
+}
+
+.title-top {
+  margin-top: 4vh;
+}
+
+/* The ball on the centre spot, in a pool of floodlight. */
+.title-ball {
+  display: grid;
+  place-items: center;
+  width: 200px;
+  height: 160px;
+  margin: 0 auto;
+  background: radial-gradient(closest-side, rgb(76 195 255 / 0.24), transparent);
+  font-size: 50px;
+  line-height: 0;
+}
+
+.title-ball .ball-3d {
+  animation: bounce 1.6s ease-in-out infinite;
+}
+
+@keyframes bounce {
+  50% {
+    transform: translateY(-8px) rotate(-12deg);
+  }
+}
+
+/* In Serie A's lettering: heavy italic capitals, white, standing out from a deep blue edge. */
+.title h1 {
+  margin: 12px 0 14px;
+  color: #fff;
+  font-family: var(--display);
+  font-size: clamp(56px, 17vw, 76px);
+  font-style: italic;
+  font-weight: 900;
+  line-height: 0.95;
+  text-transform: uppercase;
+  text-shadow: var(--extrude);
+}
+
+/* "Up" in Serie A's azure. */
+.title h1 span {
+  color: var(--azure);
+}
+
+/* Signing in and the title are one place: moving between them, the ball and the name glide from
+   where one screen has them to where the other does, while the rest fades across (see glide in
+   App.tsx). */
+.title .title-ball {
+  view-transition-name: title-ball;
+}
+
+.title h1 {
+  view-transition-name: title-name;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 320ms;
+}
+
+::view-transition-group(title-ball),
+::view-transition-group(title-name) {
+  animation-duration: 460ms;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* The ball's box is as wide as the name on the title but only as wide as the ball when signing in:
+   the ball's drawn as it is, in the middle, rather than stretched across. */
+::view-transition-old(title-ball),
+::view-transition-new(title-ball) {
+  height: 100%;
+  object-fit: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none;
+  }
+}
+
+.tagline {
+  max-width: 290px;
+  margin: 0 auto;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.45;
+  text-shadow:
+    0 1px 2px rgb(2 10 60 / 0.8),
+    0 0 14px rgb(2 35 92 / 0.9);
+}
+
+.title-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-bottom: 2vh;
+}
+
+.play-button {
+  width: min(70%, 300px);
+  padding: 18px;
+  font-size: 24px;
+}
+
+/* Customise */
+
+/* The menus: indigo, with Serie A's triangles faint across the top and fading into it, and a calm
+   pool behind the header, so its title always sits on plain indigo. The triangles are set in
+   main.tsx, when their file's there (see teams.ts). */
+.menu {
+  align-items: stretch;
+  gap: 16px;
+  background:
+    radial-gradient(70% 70px at 50% 52px, rgb(28 15 94 / 0.95), transparent),
+    linear-gradient(rgb(28 15 94 / 0.78), rgb(28 15 94 / 0.97) 300px),
+    var(--league-pattern, none) top center / 100% auto no-repeat,
+    var(--indigo);
+  color: #fff;
+}
+
+/* The back button on the left, the title, and the level or the board's state on the right. The
+   sides share what the title leaves equally, so the title's in the middle of the screen; only a
+   title too long for that nudges over, as far as it must. */
+.menu-header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+.menu-header > :first-child {
+  justify-self: start;
+}
+
+.menu-header > :last-child {
+  justify-self: end;
+}
+
+.menu-header h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: 0.1em;
+  text-align: center;
+  text-shadow: 0 2px 0 rgb(6 3 36 / 0.45);
+  text-transform: uppercase;
+}
+
+.icon-button {
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--panel-rim);
+  border-radius: 10px;
+  background: var(--panel-face);
+  box-shadow: var(--panel-lift);
+  color: #fff;
+  font-size: 20px;
+}
+
+.icon-button:active {
+  transform: translateY(1px);
+}
+
+/* The player's level, with a bar for how far through it they are. */
+.level {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid rgb(0 232 218 / 0.22);
+  border-radius: 999px;
+  background: var(--pill);
+  color: var(--teal);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.level-bar {
+  width: 44px;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.18);
+}
+
+.level-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--ring), var(--teal));
+}
+
+/* In a screen's header, stacked and smaller, so it's no wider than it must be and the title can
+   sit in the middle. */
+.menu-header .level {
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 9px 7px;
+  border-radius: 12px;
+  font-size: 10px;
+}
+
+.menu-header .level-bar {
+  width: 100%;
+  height: 4px;
+}
+
+.tabs {
+  display: grid;
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
+  gap: 8px;
+}
+
+.tab {
+  padding: 10px;
+  border: 1px solid var(--panel-rim);
+  border-radius: 10px;
+  background: var(--panel-face);
+  box-shadow: var(--panel-lift);
+  color: var(--soft);
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.tab.active {
+  border-color: transparent;
+  background: linear-gradient(#7bfaf2, var(--teal) 60%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.6),
+    0 4px 14px rgb(0 232 218 / 0.25);
+  color: var(--navy);
+}
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field > span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.field input {
+  padding: 14px;
+  border: 1px solid var(--panel-line);
+  border-radius: 10px;
+  background: linear-gradient(180deg, #121782, #1a209a);
+  box-shadow: inset 0 2px 6px rgb(4 2 30 / 0.35);
+  color: #fff;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: 0.06em;
+}
+
+.field input:focus {
+  border-color: var(--teal);
+  outline: 2px solid rgb(0 232 218 / 0.35);
+  outline-offset: 1px;
+}
+
+.stepper {
+  display: grid;
+  grid-template-columns: 48px 1fr 48px;
+  align-items: center;
+  padding: 6px;
+  border: 1px solid var(--panel-line);
+  border-radius: 10px;
+  background: var(--panel-face);
+  box-shadow: var(--panel-lift);
+}
+
+.stepper button {
+  height: 40px;
+  border: 0;
+  border-radius: 8px;
+  background: linear-gradient(#fff, #e3e8ff);
+  box-shadow: 0 2px 0 #9aa6e8;
+  color: var(--navy);
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.stepper button:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 0 #9aa6e8;
+}
+
+.stepper output {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+/* The back of the player's shirt, as it'll be in play, in the room under their name and number. */
+.shirt-back {
+  flex: 1 0 260px;
+  width: 100%;
+  max-height: 480px;
+}
+
+.kits {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Each kit on the player, rendered in 3D, under a spotlight. */
+.kit {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+  padding: 4px 4px 8px;
+  overflow: hidden;
+  border: 2px solid var(--panel-rim);
+  border-radius: 14px;
+  background: radial-gradient(ellipse 70% 55% at 50% 38%, #3550f0, #1a2090 72%, #141a7c);
+  box-shadow: var(--panel-lift);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.kit-picture {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 140 / 176;
+}
+
+.kit-picture img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.kit-picture .flat-kit {
+  width: 56%;
+}
+
+.kit:disabled {
+  cursor: default;
+  color: var(--muted);
+}
+
+.kit:disabled .kit-picture {
+  opacity: 0.45;
+  filter: grayscale(0.7);
+}
+
+/* What it takes to unlock something, over its picture. */
+.lock {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: 999px;
+  background: var(--pill);
+  color: var(--soft);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.kit.selected {
+  border-color: var(--teal);
+  box-shadow:
+    0 0 0 1px rgb(0 232 218 / 0.4),
+    0 0 18px rgb(0 232 218 / 0.35);
+  color: var(--teal);
+}
+
+/* Each venue as the game shows it, two to a row. */
+.venues {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.venue {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 0;
+  overflow: hidden;
+  border: 2px solid var(--panel-rim);
+  border-radius: 14px;
+  background: var(--panel-face);
+  box-shadow: var(--panel-lift);
+  color: #fff;
+  text-align: left;
+}
+
+.venue-picture {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 224 / 136;
+}
+
+.venue-picture img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.venue.selected {
+  border-color: var(--teal);
+  box-shadow: 0 0 18px rgb(0 232 218 / 0.35);
+}
+
+.venue:disabled {
+  cursor: default;
+}
+
+.venue:disabled .venue-picture {
+  filter: grayscale(0.75) brightness(0.55);
+}
+
+.venue-text {
+  display: flex;
+  flex-direction: column;
+  padding: 7px 10px 9px;
+}
+
+.venue-text strong {
+  font-size: 14px;
+}
+
+.venue-text small {
+  color: var(--muted);
+}
+
+.venue.selected small {
+  color: var(--teal);
+}
+
+/* Full time */
+
+/* The middle of the pitch again, as behind the title, with the score on the centre spot and the
+   floodlight a deeper indigo. */
+.results {
+  justify-content: center;
+  gap: 14px;
+  background:
+    radial-gradient(
+      circle at 50% 34dvh,
+      transparent 179px,
+      var(--chalk) 180px 183px,
+      transparent 184px
+    ),
+    linear-gradient(
+      transparent calc(34dvh - 1.5px),
+      var(--chalk) 0 calc(34dvh + 1.5px),
+      transparent 0
+    ),
+    radial-gradient(130% 75% at 50% 34dvh, #261a86, #0e0838 75%);
+  color: #fff;
+  text-align: center;
+}
+
+.results h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 32px;
+  text-shadow: 0 3px 0 rgb(2 10 60 / 0.6);
+  text-transform: uppercase;
+}
+
+/* The score on a teal board, lit along its top edge and set on a darker lip, like the buttons. */
+.final {
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 320px);
+  padding: 16px 14px 18px;
+  border-radius: 22px;
+  background:
+    linear-gradient(rgb(255 255 255 / 0.35), transparent 3px),
+    linear-gradient(#7bfaf2, var(--teal) 55%, #00cfc3);
+  box-shadow:
+    0 6px 0 var(--teal-deep),
+    0 14px 24px rgb(0 0 0 / 0.3);
+  color: var(--navy);
+}
+
+.final span {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.final strong {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 54px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.final em {
+  font-style: normal;
+  font-weight: 800;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  width: min(100%, 320px);
+}
+
+.stats div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 4px;
+  border: 1px solid var(--panel-rim);
+  border-radius: 12px;
+  background: var(--panel-face);
+  box-shadow: var(--panel-lift);
+}
+
+.stats strong {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+}
+
+.stats span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.teal {
+  color: var(--teal);
+}
+
+.earned,
+.unlocked {
+  margin: 0;
+  color: var(--teal);
+  font-weight: 800;
+}
+
+.unlocked {
+  padding: 6px 12px;
+  border: 1px solid rgb(0 232 218 / 0.35);
+  border-radius: 999px;
+  background: rgb(0 232 218 / 0.15);
+}
+
+.again-button {
+  width: min(70%, 260px);
+  margin-top: 6px;
+  padding: 16px;
+  font-size: 18px;
+}
+
+.text-button {
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--soft);
+  font-weight: 700;
+}
+
+@media (hover: hover) {
+  .text-button:hover {
+    color: #fff;
+  }
+}
+
+/* Playing */
+
+.play {
+  position: absolute;
+  inset: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: none;
+}
+
+.play-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* The HUD is a broadcast scorebug across the top: one solid bar of score, clock and streak, the
+   clock picked out in teal in the middle, with the back and restart buttons either side and the
+   lives and legs on a strip hung underneath. It's kept slim, so the sky above the goal, where
+   things come in, stays clear. */
+.hud {
+  position: absolute;
+  top: max(8px, env(safe-area-inset-top));
+  right: 8px;
+  left: 8px;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 38px;
+  grid-template-areas:
+    "back bug restart"
+    "mute strip .";
+  align-items: start;
+  column-gap: 6px;
+  pointer-events: none;
+}
+
+.hud-back {
+  grid-area: back;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--hud-rim);
+  border-radius: 9px;
+  background: var(--hud-face);
+  box-shadow: var(--hud-shadow);
+  color: #fff;
+  font-size: 18px;
+  font-weight: 800;
+  pointer-events: auto;
+}
+
+.hud-back:active {
+  transform: translateY(1px);
+  filter: brightness(1.2);
+}
+
+.hud-restart {
+  grid-area: restart;
+}
+
+/* The music on or off, a smaller button tucked under the way back. */
+.hud-mute {
+  grid-area: mute;
+  height: 34px;
+  margin-top: 6px;
+}
+
+.hud-mute svg {
+  width: 19px;
+  height: 19px;
+}
+
+.hud-bug {
+  position: relative;
+  grid-area: bug;
+  justify-self: center;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  width: min(100%, 300px);
+  height: 44px;
+  overflow: hidden;
+  border: 1px solid var(--hud-rim);
+  border-radius: 9px;
+  background: var(--hud-face);
+  box-shadow: var(--hud-shadow);
+}
+
+/* A hairline of teal along the top edge, as a broadcast graphic is trimmed. */
+.hud-bug::before {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 1;
+  height: 2px;
+  background: linear-gradient(90deg, var(--teal), var(--ring) 50%, var(--teal));
+  content: "";
+  pointer-events: none;
+}
+
+.hud-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: 3px 8px 1px;
+  color: #fff;
+}
+
+.hud-box span {
+  color: var(--teal);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.hud-box strong {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 21px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.05;
+  white-space: nowrap;
+  text-shadow: 0 1px 0 rgb(1 6 32 / 0.6);
+}
+
+.hud-score {
+  box-shadow: inset -1px 0 0 rgb(1 6 32 / 0.5);
+}
+
+/* The clock, in a block of teal with navy figures, as the match clock is on a scorebug. */
+.hud-time {
+  min-width: 66px;
+  padding-inline: 12px;
+  background:
+    linear-gradient(rgb(255 255 255 / 0.45), transparent 3px),
+    linear-gradient(#7bfaf2, var(--teal) 55%, #00c9bd);
+  box-shadow:
+    inset 1px 0 0 rgb(255 255 255 / 0.4),
+    inset -1px 0 0 rgb(0 60 80 / 0.35);
+  color: var(--navy);
+}
+
+.hud-time span {
+  color: rgb(2 35 92 / 0.75);
+}
+
+.hud-time strong {
+  font-size: 24px;
+  text-shadow: 0 1px 0 rgb(255 255 255 / 0.35);
+}
+
+/* The last ten seconds: the block goes red, and the figures tick. */
+.hud-time.low {
+  background:
+    linear-gradient(rgb(255 255 255 / 0.35), transparent 3px),
+    linear-gradient(#ff6f73, var(--red) 55%, #c22a2f);
+  color: #fff;
+}
+
+.hud-time.low span {
+  color: #fff;
+}
+
+.hud-time.low strong {
+  text-shadow: 0 1px 0 rgb(80 0 6 / 0.5);
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+.hud-streak strong {
+  color: var(--teal);
+  animation: pop 220ms ease-out;
+}
+
+/* On a run of five, the streak's figures turn amber over a glow coming up from below. */
+.hud-streak.hot {
+  background: radial-gradient(ellipse 80% 90% at 50% 120%, rgb(255 150 40 / 0.55), transparent);
+}
+
+.hud-streak.hot strong {
+  color: #ffc24d;
+}
+
+/* On ten, it's ablaze. */
+.hud-streak.blazing {
+  background:
+    linear-gradient(rgb(255 255 255 / 0.3), transparent 3px),
+    linear-gradient(#ff9a3a, #e8501f 55%, #b8261a);
+}
+
+.hud-streak.blazing span,
+.hud-streak.blazing strong {
+  color: #fff6c8;
+}
+
+/* From a streak of 3, when the footballs start to glow with a rainbow (game/rainbow.ts), the
+   streak's end of the bar gets a rainbow edge that turns. */
+@property --rainbow-turn {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.hud-streak.rainbow {
+  border: 2px solid transparent;
+  border-radius: 0 8px 8px 0;
+  background:
+    var(--hud-face) padding-box,
+    conic-gradient(
+        from var(--rainbow-turn),
+        #ff4d4d,
+        #ffb02e,
+        #ffe44d,
+        #4dff88,
+        #4dd2ff,
+        #7a6bff,
+        #ff4dd8,
+        #ff4d4d
+      )
+      border-box;
+  animation: rainbow-turn 2s linear infinite;
+}
+
+.hud-streak.rainbow.hot {
+  background:
+    radial-gradient(ellipse 80% 90% at 50% 120%, rgb(255 150 40 / 0.55), transparent) padding-box,
+    var(--hud-face) padding-box,
+    conic-gradient(
+        from var(--rainbow-turn),
+        #ff4d4d,
+        #ffb02e,
+        #ffe44d,
+        #4dff88,
+        #4dd2ff,
+        #7a6bff,
+        #ff4dd8,
+        #ff4d4d
+      )
+      border-box;
+}
+
+.hud-streak.rainbow.blazing {
+  background:
+    linear-gradient(#ff9a3a, #e8501f 55%, #b8261a) padding-box,
+    conic-gradient(
+        from var(--rainbow-turn),
+        #ff4d4d,
+        #ffb02e,
+        #ffe44d,
+        #4dff88,
+        #4dd2ff,
+        #7a6bff,
+        #ff4dd8,
+        #ff4d4d
+      )
+      border-box;
+}
+
+@keyframes rainbow-turn {
+  to {
+    --rainbow-turn: 360deg;
+  }
+}
+
+@keyframes pop {
+  from {
+    transform: scale(1.4);
+  }
+}
+
+/* On the narrowest phones the figures come down a size, so a big score still fits its end. */
+@media (max-width: 359px) {
+  .hud-box {
+    padding-inline: 4px;
+  }
+
+  .hud-box strong {
+    font-size: 17px;
+  }
+
+  .hud-time strong {
+    font-size: 20px;
+  }
+}
+
+/* The strip under the scorebug, like a tab hung from it: the lives, then the legs. */
+.hud-strip {
+  grid-area: strip;
+  justify-self: center;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 10px 4px;
+  border: 1px solid var(--hud-rim);
+  border-top: 0;
+  border-radius: 0 0 8px 8px;
+  background: linear-gradient(#081550, #050d3a);
+  box-shadow: 0 6px 14px rgb(1 6 40 / 0.4);
+}
+
+/* The lives left, as hearts. A lost one swells red, then goes dim. */
+.hud-lives {
+  display: flex;
+  gap: 2px;
+}
+
+.life {
+  display: flex;
+  align-items: center;
+  color: #ff4f5a;
+  font-size: 14px;
+  line-height: 1;
+  filter: drop-shadow(0 0 3px rgb(255 60 70 / 0.45));
+}
+
+.life.lost {
+  color: rgb(255 255 255 / 0.22);
+  filter: none;
+  animation: lose 450ms ease-out;
+}
+
+@keyframes lose {
+  from {
+    color: var(--red);
+    transform: scale(1.8);
+  }
+}
+
+/* The jumps left in the player's legs: a bar for each, filling back up slowly. With none ready,
+   the empty bars glow red. */
+.hud-fitness {
+  display: flex;
+  gap: 3px;
+  padding-left: 8px;
+  border-left: 1px solid rgb(255 255 255 / 0.16);
+}
+
+.leg {
+  overflow: hidden;
+  width: 14px;
+  height: 6px;
+  border-radius: 2px;
+  background: rgb(255 255 255 / 0.16);
+}
+
+.leg span {
+  display: block;
+  height: 100%;
+  background: rgb(255 255 255 / 0.55);
+}
+
+.leg.ready span {
+  background: var(--teal);
+  box-shadow: 0 0 6px rgb(0 232 218 / 0.7);
+}
+
+.hud-fitness.tired .leg {
+  background: rgb(229 72 77 / 0.45);
+  box-shadow: 0 0 6px rgb(229 72 77 / 0.6);
+}
+
+/* Just below the head, over the player's back: clear of the balls coming in above, and of the
+   player lying across the bottom of the screen once they're knocked out. Their shadow is the
+   container's, since each shout is cut to shape. */
+.popups {
+  position: absolute;
+  top: 66%;
+  right: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  filter: drop-shadow(0 4px 10px rgb(1 6 40 / 0.5));
+  pointer-events: none;
+}
+
+/* Each shout is a broadcast caption: a solid navy tag with its ends cut on the slant and a line
+   of its tone's colour along the top, so it reads over any shirt or sky behind it. */
+.popup {
+  position: absolute;
+  padding: 5px 20px 6px;
+  background:
+    linear-gradient(var(--popup-edge, var(--teal)), var(--popup-edge, var(--teal))) top / 100% 3px
+      no-repeat,
+    linear-gradient(#16379c, #0a1c63 60%, #071351);
+  clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+  color: #fff;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 21px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  animation: rise 750ms ease-out forwards;
+}
+
+/* Instructions sit a little below the shouts, so both can be read at once. */
+.popup-hint {
+  --popup-edge: var(--ring);
+  top: 44px;
+  padding: 8px 20px;
+  color: #ffffff;
+  font-size: 15px;
+  animation-duration: 2400ms;
+}
+
+.popup-bad {
+  --popup-edge: #ff9a9d;
+  background:
+    linear-gradient(#ff9a9d, #ff9a9d) top / 100% 3px no-repeat,
+    linear-gradient(#e5484d, #b3141b 60%, #8c0d13);
+  color: #ffffff;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.8);
+  }
+
+  20% {
+    opacity: 1;
+    transform: translateY(0) scale(1.08);
+  }
+
+  30% {
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-16px) scale(1);
+  }
+}
+
+/* A knock reddens the edges of the screen for a moment. */
+/* The corners of the game darkened, as a camera's lens darkens them. Its opacity is the venue's. */
+.lens {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 72% 62% at 50% 50%, transparent 55%, rgb(0 0 0) 135%);
+  pointer-events: none;
+}
+
+.hit-flash {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 75% 65% at 50% 52%, transparent 50%, rgb(229 40 48 / 0.6));
+  box-shadow: inset 0 0 0 3px rgb(255 80 90 / 0.5);
+  pointer-events: none;
+  animation: fade 400ms ease-out forwards;
+}
+
+@keyframes fade {
+  to {
+    opacity: 0;
+  }
+}
+
+/* On the last life: the edges of the screen closed in, dark red, fading in, then beating like a
+   heart, a double beat a second. Only its opacity moves, which costs the phone nothing. */
+.last-life {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 72% 62% at 50% 52%,
+    transparent 38%,
+    rgb(150 10 30 / 0.55) 78%,
+    rgb(60 0 12 / 0.9) 112%
+  );
+  pointer-events: none;
+  animation:
+    last-life-in 700ms ease-out,
+    heartbeat 1.1s ease-in-out 700ms infinite;
+  will-change: opacity;
+}
+
+@keyframes last-life-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes heartbeat {
+  0%,
+  100% {
+    opacity: 0.78;
+  }
+
+  12% {
+    opacity: 1;
+  }
+
+  24% {
+    opacity: 0.84;
+  }
+
+  36% {
+    opacity: 1;
+  }
+
+  60% {
+    opacity: 0.78;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .last-life {
+    animation: last-life-in 700ms ease-out;
+  }
+}
+
+/* After a game: the XP it earned, filling the bar towards the next level. */
+.xp {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: min(100%, 320px);
+}
+
+.xp-head {
+  display: flex;
+  justify-content: space-between;
+  color: var(--teal);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.xp-head .level-up {
+  color: #fff;
+}
+
+.xp-bar {
+  height: 10px;
+  overflow: hidden;
+  border: 1px solid var(--panel-rim);
+  border-radius: 999px;
+  background: #0f1466;
+  box-shadow: inset 0 2px 4px rgb(4 2 30 / 0.4);
+}
+
+.xp-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--blue), var(--teal));
+  box-shadow: 0 0 10px rgb(0 232 218 / 0.5);
+  transition: width 1.1s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.pack-button {
+  width: min(84%, 300px);
+  white-space: nowrap;
+  margin-top: 6px;
+  padding: 16px;
+  background: linear-gradient(#6d52ff, var(--violet) 60%, #2400c4);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.35),
+    0 5px 0 #1a008f,
+    0 10px 22px rgb(43 0 229 / 0.35);
+  color: #fff;
+  font-size: 18px;
+  animation: nudge 1.8s ease-in-out infinite;
+}
+
+@keyframes nudge {
+  50% {
+    transform: scale(1.04);
+  }
+}
+
+/* The pack, and what was in it, are in ui/ui.css. */
+
+@media (prefers-reduced-motion: reduce) {
+  .title-ball .ball-3d,
+  .hud-time.low strong,
+  .hud-streak.rainbow,
+  .pack-button {
+    animation: none;
+  }
+
+  .xp-bar span {
+    transition: none;
+  }
+}

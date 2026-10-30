@@ -1,0 +1,28 @@
+node_modules/
+dist/
+coverage/
+.DS_Store
+.idea/
+.vscode/
+.env.local
+.env.*.local
+
+# The 3D models (src/game/models/*.glb) and the art they're built from are third-party assets whose
+# licences need care before they're shared, so they stay local. Without them the game draws its
+# placeholders. See ASSETS.md.
+src/game/models/*.glb
+tools/player/in/
+tools/player/cartoon-backup/
+tools/player/portugal-backup/
+tools/player/yellow-backup/
+tools/crowd/in/
+tools/props/in/
+
+# The clubs' crests and Serie A's mark and triangles are their trademarks, so they stay local too.
+# Without them the game shows each club's colours instead. See src/teams.ts.
+src/assets/serie-a/
+
+# The venues' music can play in the game but not be offered for download on its own. See ASSETS.md.
+src/game/music/
+
+__pycache__/

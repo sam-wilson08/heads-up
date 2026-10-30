@@ -1,0 +1,168 @@
+/* At the Colosseum: the emperor's verdict, and the warning of a spear down the side it comes from. */
+
+/* Under the restart button, on the emperor's side, and above where the balls fly: a badge in the
+   colour to head, with the thumb in a white-rimmed disc over a caption tag, styled as the
+   scorebug is (see .hud in styles.css). */
+.verdict {
+  position: absolute;
+  top: calc(max(8px, env(safe-area-inset-top)) + 52px);
+  right: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  filter: drop-shadow(0 4px 10px rgb(1 6 40 / 0.45));
+  pointer-events: none;
+  animation: verdict-in 420ms cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+
+.verdict-thumb {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  font-size: 27px;
+  line-height: 1;
+  box-shadow:
+    inset 0 2px 0 rgb(255 255 255 / 0.35),
+    inset 0 -3px 6px rgb(0 0 0 / 0.2);
+}
+
+.verdict-label {
+  margin-top: -6px;
+  padding: 7px 10px 3px;
+  border: 1px solid rgb(255 255 255 / 0.35);
+  border-radius: 6px;
+  color: #fff;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-shadow: 0 1px 0 rgb(0 0 0 / 0.3);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.verdict-green .verdict-thumb,
+.verdict-green .verdict-label {
+  background: linear-gradient(#3fdc72, #1a9c45 60%, #13803a);
+}
+
+.verdict-red .verdict-thumb,
+.verdict-red .verdict-label {
+  background: linear-gradient(#ff6a5f, #e5332a 60%, #b71f17);
+}
+
+/* About to turn over: the thumb shakes. */
+.verdict.turning .verdict-thumb {
+  animation: verdict-shake 180ms ease-in-out infinite;
+}
+
+@keyframes verdict-in {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+}
+
+@keyframes verdict-shake {
+  25% {
+    transform: rotate(-14deg);
+  }
+  75% {
+    transform: rotate(14deg);
+  }
+}
+
+/* A spear's coming: the side of the screen flashes red, as far in as the lanes it reaches. */
+.spear-flash {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+  animation: spear-blink 520ms ease-in-out infinite;
+}
+
+.spear-flash.left {
+  left: 0;
+  justify-content: flex-start;
+  background: linear-gradient(to right, rgb(229 40 30 / 0.7), rgb(229 40 30 / 0));
+}
+
+.spear-flash.right {
+  right: 0;
+  justify-content: flex-end;
+  background: linear-gradient(to left, rgb(229 40 30 / 0.7), rgb(229 40 30 / 0));
+}
+
+.spear-flash.reach-1 {
+  width: 22%;
+}
+
+.spear-flash.reach-2 {
+  width: 48%;
+}
+
+/*
+ * On Sakura Peak a ninja's staff sweeps in low (see SweepHud.tsx), so its flash is along the bottom
+ * of the screen, at the player's feet, fading out upwards.
+ */
+.spear-flash.low {
+  top: auto;
+  height: 34%;
+  align-items: flex-end;
+  padding-bottom: 6%;
+  mask-image: linear-gradient(to top, #000 40%, transparent);
+}
+
+.spear-flash.low.left {
+  background: linear-gradient(to right, rgb(229 40 30 / 0.9), rgb(229 40 30 / 0));
+}
+
+.spear-flash.low.right {
+  background: linear-gradient(to left, rgb(229 40 30 / 0.9), rgb(229 40 30 / 0));
+}
+
+.spear-flash.near {
+  animation-duration: 160ms;
+}
+
+.spear-icon {
+  width: 44px;
+  margin: 0 6px;
+  fill: #fff;
+  filter: drop-shadow(0 1px 3px rgb(0 0 0 / 0.5));
+}
+
+/* A bright edge where the flash meets the side of the screen. */
+.spear-flash.left {
+  box-shadow: inset 4px 0 0 rgb(255 120 110 / 0.9);
+}
+
+.spear-flash.right {
+  box-shadow: inset -4px 0 0 rgb(255 120 110 / 0.9);
+}
+
+.spear-flash.right .spear-icon {
+  transform: scaleX(-1);
+}
+
+@keyframes spear-blink {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .verdict,
+  .verdict.turning .verdict-thumb,
+  .spear-flash {
+    animation: none;
+  }
+}

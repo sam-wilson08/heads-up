@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <title>Decoy preview</title>
+    <style>
+      body {
+        font:
+          14px/1.4 system-ui,
+          sans-serif;
+        margin: 16px;
+        background: #1b3354;
+        color: #fff;
+      }
+      section {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      figure {
+        margin: 0;
+      }
+      canvas {
+        display: block;
+        border-radius: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Decoy preview</h1>
+    <p>
+      Each venue's own decoys up close, in its light, posed a third of a second into their flight.
+    </p>
+    <section id="venues"></section>
+    <script type="module">
+      import * as THREE from "three";
+      import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+      import { VENUES } from "/src/venues.ts";
+      import { itemFactory } from "/src/game/objects.ts";
+      import { ANIMATE } from "/src/game/decoys.ts";
+      import { buildScenery } from "/src/game/scenery.ts";
+
+      const VIEW = { width: 640, height: 240 };
+      const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+      renderer.setPixelRatio(2);
+      renderer.setSize(VIEW.width, VIEW.height);
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      const environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+      const items = itemFactory(environment);
+
+      for (const venue of VENUES) {
+        const scene = new THREE.Scene();
+        buildScenery(venue, scene, 4).update(0, 0);
+        const own = venue.decoys ?? [];
+        own.forEach((kind, i) => {
+          const object = items.make(kind);
+          object.position.set((i - (own.length - 1) / 2) * 1.25, 1.5, -2);
+          object.rotation.set(0.15, 0.25, 0);
+          ANIMATE[kind]?.(object, 0.33);
+          scene.add(object);
+        });
+        const camera = new THREE.PerspectiveCamera(35, VIEW.width / VIEW.height, 0.1, 400);
+        camera.position.set(0, 1.6, 2);
+        camera.lookAt(0, 1.5, -2);
+        renderer.render(scene, camera);
+        const out = document.createElement("canvas");
+        out.width = renderer.domElement.width;
+        out.height = renderer.domElement.height;
+        out.style.width = `${VIEW.width}px`;
+        out.getContext("2d").drawImage(renderer.domElement, 0, 0);
+        const figure = document.createElement("figure");
+        const caption = document.createElement("figcaption");
+        caption.textContent = `${venue.name}: ${own.join(", ")}`;
+        figure.append(out, caption);
+        document.getElementById("venues").append(figure);
+      }
+      document.body.dataset.ready = "1";
+    </script>
+  </body>
+</html>

@@ -1,0 +1,175 @@
+/* A round's loading screen: the game's ball bouncing over a bar that fills, on a plain dark
+   backdrop. It's over the pitch while everything the round can show is fetched, compiled and
+   uploaded, and fades as the clock starts. In a round, the back and restart buttons stay on top. */
+
+.loading-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: radial-gradient(120% 70% at 50% 42%, #13246a, #070a2a 72%);
+  color: #fff;
+  transition: opacity 200ms ease-out;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.loading-screen.gone {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* The ball drops, squashes a little on the ground and springs back up, spinning as it goes, over
+   a shadow that darkens as it nears. */
+.loading-ball {
+  position: relative;
+  width: 60px;
+  height: 116px;
+}
+
+.loading-ball > span {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 60px;
+  height: 60px;
+  transform-origin: 50% 100%;
+  animation: loading-bounce 0.9s infinite;
+}
+
+.loading-ball .icon {
+  display: block;
+  width: 100%;
+  height: 100%;
+  animation: loading-spin 1.8s linear infinite;
+}
+
+.loading-ball::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 6px;
+  width: 48px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgb(0 0 0 / 0.55);
+  filter: blur(2px);
+  animation: loading-shadow 0.9s infinite;
+}
+
+/* Falling, it speeds up; rising, it slows, as a thrown ball does. */
+@keyframes loading-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+    animation-timing-function: cubic-bezier(0.11, 0, 0.5, 0);
+  }
+  46% {
+    transform: translateY(52px);
+  }
+  50% {
+    transform: translateY(52px) scale(1.12, 0.86);
+  }
+  54% {
+    transform: translateY(52px);
+    animation-timing-function: cubic-bezier(0.5, 1, 0.89, 1);
+  }
+}
+
+@keyframes loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes loading-shadow {
+  0%,
+  100% {
+    transform: scale(0.45);
+    opacity: 0.4;
+    animation-timing-function: cubic-bezier(0.11, 0, 0.5, 0);
+  }
+  46% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  54% {
+    transform: scale(1);
+    opacity: 1;
+    animation-timing-function: cubic-bezier(0.5, 1, 0.89, 1);
+  }
+}
+
+.loading-label {
+  color: var(--soft);
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.loading-bar {
+  position: relative;
+  width: min(68vw, 260px);
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.1);
+  box-shadow:
+    inset 0 1px 2px rgb(0 0 0 / 0.45),
+    0 0 0 1px rgb(255 255 255 / 0.06);
+}
+
+/* The whole bar's width, slid in from the left as far as it's got, so its rounded end and its
+   glint keep their shape. */
+.loading-bar > span {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--teal-deep), var(--teal));
+  will-change: transform;
+}
+
+/* A glint running along it, so it looks busy even while it's creeping. */
+.loading-bar > span::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 35%, rgb(255 255 255 / 0.5) 50%, transparent 65%);
+  transform: translateX(-100%);
+  animation: loading-glint 1.4s ease-in-out infinite;
+}
+
+@keyframes loading-glint {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-screen {
+    transition: none;
+  }
+
+  .loading-ball > span,
+  .loading-ball .icon,
+  .loading-ball::after,
+  .loading-bar > span::after {
+    animation: none;
+  }
+
+  .loading-ball > span {
+    transform: translateY(52px);
+  }
+}
+
+/* The league's mark, over the ball. */
+.loading-league {
+  height: 64px;
+  margin-bottom: 8px;
+}

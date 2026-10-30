@@ -1,0 +1,498 @@
+/* Stages and levels (Stages.tsx), a level's results (LevelResults.tsx), and what a level run adds
+   to the play's HUD (game/LevelHud.tsx). Colours and type are the menus' own, from styles.css. */
+
+/* The stages, one to a row: the venue as the game shows it, and what makes it play its own way. */
+.stage-list,
+.level-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stage-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 42% 1fr;
+  align-items: stretch;
+  width: 100%;
+  padding: 0;
+  overflow: hidden;
+  border: 2px solid var(--panel-rim);
+  border-radius: 14px;
+  background: var(--panel-face);
+  box-shadow: var(--panel-lift);
+  color: #fff;
+  text-align: left;
+}
+
+/* A hairline between the picture and the writing, so the picture reads as framed. */
+.stage-card .venue-picture {
+  box-shadow: 1px 0 0 rgb(255 255 255 / 0.1);
+}
+
+.stage-card .venue-picture {
+  height: 100%;
+  aspect-ratio: 224 / 136;
+}
+
+.stage-card .venue-picture img {
+  object-fit: cover;
+}
+
+.stage-card.here {
+  border-color: var(--teal);
+  box-shadow:
+    0 0 0 1px rgb(0 232 218 / 0.35),
+    0 0 18px rgb(0 232 218 / 0.3);
+}
+
+.stage-card:disabled {
+  cursor: default;
+}
+
+.stage-card:disabled .venue-picture {
+  filter: grayscale(0.75) brightness(0.5);
+}
+
+.stage-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  min-width: 0;
+  padding: 8px 12px;
+}
+
+.stage-text strong {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.stage-twist {
+  color: var(--teal);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.stage-card:disabled .stage-twist {
+  color: var(--muted);
+}
+
+.stage-medals,
+.stage-locked {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  color: var(--soft);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.stage-medals em {
+  margin-left: auto;
+  padding: 1px 7px;
+  border: 1px solid rgb(0 232 218 / 0.3);
+  border-radius: 999px;
+  background: rgb(0 232 218 / 0.18);
+  color: var(--teal);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.stage-locked {
+  color: var(--muted);
+}
+
+/* Over the picture, clear of the name. */
+.stage-card .lock {
+  right: auto;
+  left: 8px;
+}
+
+/* A stage: its picture, what makes it play its own way, then its levels. It keeps its full height
+   however many levels there are, or its rounded corners would clip what it says. */
+.stage-hero {
+  flex-shrink: 0;
+  overflow: hidden;
+  border: 1px solid var(--panel-rim);
+  border-radius: 16px;
+  background: var(--panel-face);
+  box-shadow: var(--panel-lift);
+}
+
+.stage-hero .venue-picture {
+  aspect-ratio: 224 / 100;
+}
+
+.stage-hero .venue-picture img {
+  object-fit: cover;
+}
+
+.stage-about {
+  padding: 10px 14px 12px;
+}
+
+.stage-about strong {
+  color: var(--teal);
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.stage-about p {
+  margin: 4px 0 0;
+  color: #e3e6ff;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.level-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 38px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 2px solid var(--panel-rim);
+  border-radius: 14px;
+  background: var(--panel-face);
+  box-shadow: var(--panel-lift);
+  color: #fff;
+  text-align: left;
+}
+
+.level-row:not(:disabled):active {
+  transform: translateY(1px);
+}
+
+.level-row.level-final {
+  border-color: rgb(0 232 218 / 0.45);
+  background: linear-gradient(100deg, var(--violet), #1a2092 60%, #151a80);
+}
+
+.level-row:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+/* The level's number on a navy disc. */
+.level-number {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(#0a3480, var(--navy));
+  box-shadow: inset 0 0 0 1px rgb(0 232 218 / 0.3);
+  color: var(--teal);
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 18px;
+}
+
+.level-row.level-final .level-number {
+  background: linear-gradient(#7bfaf2, var(--teal));
+  color: var(--navy);
+}
+
+.level-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.level-text strong {
+  font-size: 15px;
+}
+
+.level-text small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.level-lives {
+  color: var(--red);
+  letter-spacing: 1px;
+}
+
+.level-text .level-best {
+  color: var(--soft);
+}
+
+.level-medals {
+  display: inline-flex;
+  gap: 2px;
+  color: var(--muted);
+  font-size: 20px;
+}
+
+.level-row .lock {
+  top: 6px;
+  right: 6px;
+}
+
+.medal-key {
+  font-size: 12px;
+  text-align: center;
+}
+
+.free-play-button {
+  align-self: center;
+  width: min(100%, 320px);
+  padding: 14px;
+  background: linear-gradient(#7bfaf2, var(--teal) 55%, #00d6c9);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.6),
+    0 5px 0 var(--teal-deep),
+    0 10px 20px rgb(0 40 80 / 0.3);
+  color: var(--navy);
+  font-size: 17px;
+}
+
+/* A level's results. */
+.level-results {
+  gap: 10px;
+}
+
+.medal-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.medal-title .icon {
+  font-size: 38px;
+}
+
+.medal-title.gold {
+  color: #ffd766;
+}
+
+.medal-title.silver {
+  color: #e6ecf2;
+}
+
+.medal-title.bronze {
+  color: #f0a06a;
+}
+
+.level-name {
+  margin: -4px 0 0;
+  color: var(--soft);
+  font-weight: 700;
+}
+
+.medal-ladder {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  width: min(100%, 340px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.medal-ladder li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 2px 6px;
+  border: 1px solid var(--panel-rim);
+  border-radius: 12px;
+  background: var(--panel-face);
+  box-shadow: var(--panel-lift);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.medal-ladder .icon {
+  font-size: 26px;
+}
+
+.medal-ladder li.won {
+  color: #fff;
+}
+
+.medal-ladder li.new {
+  box-shadow: 0 0 0 2px var(--gold);
+  animation: medal-in 600ms ease-out;
+}
+
+.medal-ladder b {
+  color: var(--teal);
+  font-size: 10px;
+}
+
+@keyframes medal-in {
+  from {
+    transform: scale(1.25);
+  }
+}
+
+/* The run as a bar, marked where the streak broke. */
+.breaks {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: min(100%, 340px);
+}
+
+.breaks-bar {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--blue), var(--teal));
+  box-shadow: 0 0 10px rgb(0 232 218 / 0.3);
+}
+
+.break {
+  position: absolute;
+  top: -4px;
+  width: 4px;
+  height: 18px;
+  margin-left: -2px;
+  border-radius: 2px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(4 2 30 / 0.5);
+}
+
+.break.hit,
+.break.zapped,
+.break.ghosted,
+.break.frisbee {
+  background: var(--red);
+}
+
+.break.tripped {
+  background: #ffb02e;
+}
+
+.breaks ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--soft);
+  font-size: 12px;
+  text-align: left;
+}
+
+.breaks b {
+  display: inline-block;
+  min-width: 34px;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+.breaks em {
+  color: var(--muted);
+  font-style: normal;
+}
+
+.breaks-none {
+  margin: 0;
+  color: var(--teal);
+  font-weight: 800;
+}
+
+.retry-button {
+  width: min(84%, 300px);
+  font-size: 22px;
+}
+
+.level-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  width: min(100%, 340px);
+}
+
+.level-actions .home-tile {
+  flex: 1;
+}
+
+.level-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.pack-tile {
+  background: linear-gradient(#6d52ff, var(--violet) 60%, #2400c4);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.35),
+    0 4px 0 #1a008f;
+}
+
+/* The play's HUD on a level: the next medal to go for, and the split against the best run, as a
+   pair of tags under the scorebug's strip (see .hud in styles.css), as a broadcast shows the
+   target to beat. */
+.hud-practice {
+  position: absolute;
+  top: calc(max(8px, env(safe-area-inset-top)) + 72px);
+  left: 50%;
+  display: flex;
+  gap: 4px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  white-space: nowrap;
+  filter: drop-shadow(0 4px 8px rgb(1 6 40 / 0.45));
+}
+
+.hud-target,
+.hud-split {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 10px;
+  border: 1px solid var(--hud-rim);
+  border-radius: 6px;
+  background: var(--hud-face);
+  color: #fff;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-target.gold,
+.hud-target.done {
+  color: #ffe27a;
+}
+
+.hud-split.ahead {
+  color: #5fe08a;
+}
+
+.hud-split.behind {
+  color: #ff8a8e;
+}
+
+.medal-icon.empty,
+.perfect-icon.empty {
+  color: var(--muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .medal-ladder li.new {
+    animation: none;
+  }
+}

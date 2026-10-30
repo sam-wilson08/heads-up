@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <title>Kit preview</title>
+    <style>
+      body {
+        font:
+          14px/1.4 system-ui,
+          sans-serif;
+        margin: 16px;
+        background: #1b3354;
+        color: #fff;
+      }
+      main {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+        gap: 12px;
+      }
+      figure {
+        margin: 0;
+      }
+      canvas {
+        display: block;
+        width: 100%;
+        border-radius: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Kit preview</h1>
+    <p>
+      Each kit on the player, from behind standing and leaning, then from the front. See ASSETS.md.
+    </p>
+    <main id="kits"></main>
+    <script type="module">
+      import * as THREE from "three";
+      import { KITS } from "/src/kits.ts";
+      import { buildPlayer, loadPlayerModel } from "/src/game/player.ts";
+
+      const VIEW = { width: 220, height: 320 };
+      const views = [
+        { camera: [0, 1.15, 3], lean: 0 },
+        { camera: [0, 1.15, 3], lean: -0.44 },
+        { camera: [0, 1.15, -3], lean: 0 },
+      ];
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+      renderer.setPixelRatio(devicePixelRatio);
+      renderer.setSize(VIEW.width, VIEW.height);
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      const model = await loadPlayerModel();
+
+      for (const kit of KITS) {
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x8fc3ea);
+        scene.add(new THREE.HemisphereLight(0xffffff, 0x557744, 2));
+        const sun = new THREE.DirectionalLight(0xffffff, 2);
+        sun.position.set(2, 4, 3);
+        scene.add(sun);
+        const player = buildPlayer(model, "SAM THE MAN", 8, kit);
+        scene.add(player.object);
+
+        const figure = document.createElement("figure");
+        const out = document.createElement("canvas");
+        out.width = VIEW.width * views.length * devicePixelRatio;
+        out.height = VIEW.height * devicePixelRatio;
+        const ctx = out.getContext("2d");
+        views.forEach(({ camera: position, lean }, i) => {
+          player.lean(lean);
+          const camera = new THREE.PerspectiveCamera(35, VIEW.width / VIEW.height, 0.1, 20);
+          camera.position.set(...position);
+          camera.lookAt(0, 0.9, 0);
+          renderer.render(scene, camera);
+          ctx.drawImage(renderer.domElement, i * VIEW.width * devicePixelRatio, 0);
+        });
+        const caption = document.createElement("figcaption");
+        caption.textContent = kit.name;
+        figure.append(out, caption);
+        document.getElementById("kits").append(figure);
+      }
+      document.body.dataset.ready = "true";
+    </script>
+  </body>
+</html>

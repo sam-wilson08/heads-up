@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <title>Build the dragon</title>
+    <style>
+      body {
+        font:
+          16px/1.5 system-ui,
+          sans-serif;
+        margin: 32px;
+        max-width: 760px;
+      }
+      pre {
+        background: #f2f2f2;
+        padding: 12px;
+        white-space: pre-wrap;
+      }
+      canvas {
+        display: block;
+        margin: 8px 0;
+        background: #e9d6b4;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Build the dragon</h1>
+    <p>
+      Makes Sakura Peak's dragon, which flies its laps of the sky (see
+      <code>src/game/twists/dragon.ts</code>), from Meshy's GLB download: put it in
+      <code>tools/props/in/dragon/</code> as <code>dragon.glb</code>. It's made into
+      <code>prop-dragon.glb</code> and downloaded: move it to <code>src/game/models/</code>. See
+      ASSETS.md.
+    </p>
+    <p>
+      The dragon lies dead straight along +X, head first, its back up +Y, 1 m long and centred on
+      the origin: the game bends it along its flight, so Meshy's must be straight too. Its colour's
+      capped at 2048 px, since Meshy's remesh cuts it into small pieces whose edges blur at less,
+      and its normal map at 1024 px, both as JPEG; its metal and roughness map is left out, since
+      it's evenly matte and no metal. It's simplified if it has more than 24,000 triangles. The
+      pictures below show it from the side and from above, head to the right, to check it's the
+      right way round.
+    </p>
+    <pre id="log">Building…</pre>
+    <script type="module">
+      import * as THREE from "three";
+      import { GLTFExporter } from "three/addons/exporters/GLTFExporter.js";
+      import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+      import { mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
+      import { SimplifyModifier } from "three/addons/modifiers/SimplifyModifier.js";
+
+      const IN = "/tools/props/in/dragon/";
+      /** At most how many triangles. Meshy's remesh to about 20,000 is kept as it is. */
+      const TRIANGLES = 24000;
+      /**
+       * The turn, in radians, that puts Meshy's dragon head first along +X: it comes head first
+       * along +Z. `?turnY=` and `?turnX=` try others, for a new download that faces another way;
+       * check the pictures this page draws have the head on the right.
+       */
+      const params = new URLSearchParams(location.search);
+      const TURN = {
+        y: Number(params.get("turnY") ?? Math.PI / 2),
+        x: Number(params.get("turnX") ?? 0),
+      };
+      const log = (line) => (document.getElementById("log").textContent += `\n${line}`);
+
+      /** A picture drawn again at no more than `most` px across, as `mimeType`. */
+      const capped = (texture, most, mimeType) => {
+        const { width, height } = texture.image;
+        const scale = Math.min(1, most / Math.max(width, height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(width * scale);
+        canvas.height = Math.round(height * scale);
+        canvas.getContext("2d").drawImage(texture.image, 0, 0, canvas.width, canvas.height);
+        const out = new THREE.CanvasTexture(canvas);
+        out.colorSpace = texture.colorSpace;
+        out.flipY = texture.flipY;
+        out.userData.mimeType = mimeType;
+        return out;
+      };
+
+      try {
+        // Meshy's pictures are 4096 px PNGs, which Chrome can fail to decode as ImageBitmaps, as
+        // three's loader would: they're loaded as plain images instead.
+        const loader = new GLTFLoader();
+        loader.register((parser) => {
+          parser.textureLoader = new THREE.TextureLoader(parser.options.manager);
+          return { name: "plain-images" };
+        });
+        const gltf = await loader.loadAsync(IN + "dragon.glb");
+        gltf.scene.updateMatrixWorld(true);
+        const meshes = [];
+        gltf.scene.traverse((o) => {
+          if (o.isMesh) meshes.push(o);
+        });
+        const from = meshes[0].material;
+        // Both as JPEG: the dragon's never near enough for JPEG's loss in its directions to show,
+        // and as PNG its normal map alone would be 2.4 MB.
+        const material = new THREE.MeshStandardMaterial({
+          map: capped(from.map, 2048, "image/jpeg"),
+          normalMap: from.normalMap ? capped(from.normalMap, 1024, "image/jpeg") : null,
+          roughness: 0.6,
+          metalness: 0,
+          side: THREE.DoubleSide,
+        });
+
+        // One mesh, in its own place, simplified if it must be, with Meshy's pictures on it.
+        let before = 0;
+        const parts = meshes.map((mesh) => {
+          const geometry = mesh.geometry.clone().applyMatrix4(mesh.matrixWorld);
+          before += (geometry.index?.count ?? geometry.attributes.position.count) / 3;
+          for (const name of Object.keys(geometry.attributes)) {
+            if (!["position", "normal", "uv"].includes(name)) geometry.deleteAttribute(name);
+          }
+          return geometry;
+        });
+        let geometry = parts.length === 1 ? parts[0] : null;
+        if (!geometry) {
+          const { mergeGeometries } = await import("three/addons/utils/BufferGeometryUtils.js");
+          geometry = mergeGeometries(parts);
+        }
+        const count = (g) => (g.index?.count ?? g.attributes.position.count) / 3;
+        if (count(geometry) > TRIANGLES) {
+          // Simplify keeping the UVs: the modifier needs shared vertices to collapse edges.
+          geometry = mergeVertices(geometry, 1e-4);
+          const remove = geometry.attributes.position.count - Math.round(TRIANGLES / 2);
+          geometry = await new SimplifyModifier().modify(geometry, Math.max(0, remove));
+          geometry.computeVertexNormals();
+        }
+        const dragon = new THREE.Mesh(geometry, material);
+
+        // Head first along +X, 1 m long, centred on the origin.
+        dragon.rotation.set(TURN.x, TURN.y, 0);
+        dragon.updateMatrixWorld(true);
+        dragon.geometry.applyMatrix4(dragon.matrixWorld);
+        dragon.rotation.set(0, 0, 0);
+        dragon.geometry.computeBoundingBox();
+        const box = dragon.geometry.boundingBox;
+        const size = box.getSize(new THREE.Vector3());
+        const centre = box.getCenter(new THREE.Vector3());
+        dragon.geometry
+          .translate(-centre.x, -centre.y, -centre.z)
+          .scale(1 / size.x, 1 / size.x, 1 / size.x);
+        dragon.name = "dragon";
+        log(
+          `Meshy's: ${Math.round(before)} triangles, ${size.x.toFixed(2)} × ${size.y.toFixed(2)} × ` +
+            `${size.z.toFixed(2)} (x, y, z) once turned. Now ${Math.round(count(geometry))} triangles.`,
+        );
+
+        // From the side and from above, head to the right.
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(720, 160);
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+        const scene = new THREE.Scene();
+        scene.add(new THREE.HemisphereLight(0xfff4e0, 0x6a5a4a, 2.2), dragon);
+        const sun = new THREE.DirectionalLight(0xffffff, 2);
+        sun.position.set(1, 2, 2);
+        scene.add(sun);
+        for (const [from, up] of [
+          [new THREE.Vector3(0, 0, 2), new THREE.Vector3(0, 1, 0)],
+          [new THREE.Vector3(0, 2, 0), new THREE.Vector3(0, 0, -1)],
+        ]) {
+          const camera = new THREE.OrthographicCamera(-0.54, 0.54, 0.12, -0.12, 0.1, 10);
+          camera.position.copy(from);
+          camera.up.copy(up);
+          camera.lookAt(0, 0, 0);
+          renderer.render(scene, camera);
+          const shot = document.createElement("canvas");
+          shot.width = 720;
+          shot.height = 160;
+          shot.getContext("2d").drawImage(renderer.domElement, 0, 0);
+          document.body.append(shot);
+        }
+
+        const glb = await new GLTFExporter().parseAsync(dragon, { binary: true });
+        log(`prop-dragon.glb: ${Math.round(glb.byteLength / 1024)} KB`);
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(new Blob([glb], { type: "model/gltf-binary" }));
+        link.download = "prop-dragon.glb";
+        link.textContent = "Download prop-dragon.glb again";
+        document.body.append(link);
+        link.click();
+        log("Downloaded: move prop-dragon.glb to src/game/models/.");
+      } catch (error) {
+        log(`Failed: ${error}`);
+        console.error(error);
+      }
+      document.body.dataset.done = "true";
+    </script>
+  </body>
+</html>

@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <title>Build the shark</title>
+    <style>
+      body {
+        font:
+          16px/1.5 system-ui,
+          sans-serif;
+        margin: 32px;
+        max-width: 760px;
+      }
+      pre {
+        background: #f2f2f2;
+        padding: 12px;
+        white-space: pre-wrap;
+      }
+      canvas {
+        display: block;
+        margin: 8px 0;
+        background: #0e4a5c;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Build the shark</h1>
+    <p>
+      Makes the Underwater venue's shark, which swims across the pitch (see
+      <code>src/game/twists/underwater.ts</code>), from Meshy's FBX download: put the
+      <code>.fbx</code> and its four pictures in <code>tools/props/in/shark/</code> as
+      <code>shark.fbx</code>, <code>colour.png</code>, <code>normal.png</code>,
+      <code>roughness.png</code> and <code>metallic.png</code>. It's made into
+      <code>prop-shark.glb</code> and downloaded: move it to <code>src/game/models/</code>. See
+      ASSETS.md.
+    </p>
+    <p>
+      The shark lies along +X, nose first, 1 m long and centred on the origin, since the venue says
+      how long it is. Its pictures are capped at 512 px, and it's simplified if it has more than
+      8,000 triangles. The pictures below show it from the side and from above, nose to the right,
+      to check it's the right way round.
+    </p>
+    <pre id="log">Building…</pre>
+    <script type="module">
+      import * as THREE from "three";
+      import { GLTFExporter } from "three/addons/exporters/GLTFExporter.js";
+      import { FBXLoader } from "three/addons/loaders/FBXLoader.js";
+      import { mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
+      import { SimplifyModifier } from "three/addons/modifiers/SimplifyModifier.js";
+
+      const IN = "/tools/props/in/shark/";
+      /** At most how many triangles. Meshy's is about 7,000, as fine as a prop, so it's kept. */
+      const TRIANGLES = 8000;
+      /**
+       * The turn, in radians, that puts Meshy's shark nose first along +X: it comes nose down -Z.
+       * `?turnY=` and `?turnX=` try others, for a new download that faces another way; check the
+       * pictures this page draws have the nose on the right.
+       */
+      const params = new URLSearchParams(location.search);
+      const TURN = {
+        y: Number(params.get("turnY") ?? Math.PI / 2),
+        x: Number(params.get("turnX") ?? 0),
+      };
+      const log = (line) => (document.getElementById("log").textContent += `\n${line}`);
+
+      const picture = (file, colour) =>
+        new THREE.TextureLoader().loadAsync(IN + file).then((texture) => {
+          texture.colorSpace = colour ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+          texture.flipY = true;
+          // Colours as JPEG; directions and amounts as PNG, which keeps them exact.
+          texture.userData.mimeType = colour ? "image/jpeg" : "image/png";
+          return texture;
+        });
+
+      try {
+        const [model, map, normalMap, roughnessMap, metalnessMap] = await Promise.all([
+          new FBXLoader().loadAsync(IN + "shark.fbx"),
+          picture("colour.png", true),
+          picture("normal.png", false),
+          picture("roughness.png", false),
+          picture("metallic.png", false),
+        ]);
+        const material = new THREE.MeshStandardMaterial({
+          map,
+          normalMap,
+          roughnessMap,
+          metalnessMap,
+          roughness: 1,
+          metalness: 1,
+        });
+
+        // One mesh, in its own place, simplified, with Meshy's pictures on it.
+        model.updateMatrixWorld(true);
+        const meshes = [];
+        model.traverse((o) => {
+          if (o.isMesh) meshes.push(o);
+        });
+        let before = 0;
+        const parts = meshes.map((mesh) => {
+          const geometry = mesh.geometry.clone().applyMatrix4(mesh.matrixWorld);
+          before += (geometry.index?.count ?? geometry.attributes.position.count) / 3;
+          for (const name of Object.keys(geometry.attributes)) {
+            if (!["position", "normal", "uv"].includes(name)) geometry.deleteAttribute(name);
+          }
+          return geometry;
+        });
+        let geometry = parts.length === 1 ? parts[0] : null;
+        if (!geometry) {
+          const { mergeGeometries } = await import("three/addons/utils/BufferGeometryUtils.js");
+          geometry = mergeGeometries(parts);
+        }
+        // Simplify keeping the UVs: the modifier needs shared vertices to collapse edges.
+        let simple = mergeVertices(geometry, 1e-4);
+        const count = (g) => (g.index?.count ?? g.attributes.position.count) / 3;
+        if (count(simple) > TRIANGLES) {
+          const remove = simple.attributes.position.count - Math.round(TRIANGLES / 2);
+          simple = await new SimplifyModifier().modify(simple, Math.max(0, remove));
+        }
+        simple.computeVertexNormals();
+        const shark = new THREE.Mesh(simple, material);
+
+        // Nose first along +X, 1 m long, centred on the origin.
+        shark.rotation.set(TURN.x, TURN.y, 0);
+        shark.updateMatrixWorld(true);
+        shark.geometry.applyMatrix4(shark.matrixWorld);
+        shark.rotation.set(0, 0, 0);
+        shark.geometry.computeBoundingBox();
+        const box = shark.geometry.boundingBox;
+        const size = box.getSize(new THREE.Vector3());
+        const centre = box.getCenter(new THREE.Vector3());
+        shark.geometry
+          .translate(-centre.x, -centre.y, -centre.z)
+          .scale(1 / size.x, 1 / size.x, 1 / size.x);
+        shark.name = "shark";
+        log(
+          `Meshy's: ${Math.round(before)} triangles, ${size.x.toFixed(2)} × ${size.y.toFixed(2)} × ` +
+            `${size.z.toFixed(2)} (x, y, z) once turned. Now ${Math.round(count(simple))} triangles.`,
+        );
+
+        // From the side and from above, nose to the right.
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(600, 240);
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+        const scene = new THREE.Scene();
+        scene.add(new THREE.HemisphereLight(0xdff6ff, 0x2a3a40, 2.2), shark);
+        const sun = new THREE.DirectionalLight(0xffffff, 2);
+        sun.position.set(1, 2, 2);
+        scene.add(sun);
+        for (const [from, up] of [
+          [new THREE.Vector3(0, 0, 2), new THREE.Vector3(0, 1, 0)],
+          [new THREE.Vector3(0, 2, 0), new THREE.Vector3(0, 0, -1)],
+        ]) {
+          const camera = new THREE.OrthographicCamera(-0.6, 0.6, 0.24, -0.24, 0.1, 10);
+          camera.position.copy(from);
+          camera.up.copy(up);
+          camera.lookAt(0, 0, 0);
+          renderer.render(scene, camera);
+          const shot = document.createElement("canvas");
+          shot.width = 600;
+          shot.height = 240;
+          shot.getContext("2d").drawImage(renderer.domElement, 0, 0);
+          document.body.append(shot);
+        }
+
+        const glb = await new GLTFExporter().parseAsync(shark, {
+          binary: true,
+          maxTextureSize: 512,
+        });
+        log(`prop-shark.glb: ${Math.round(glb.byteLength / 1024)} KB`);
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(new Blob([glb], { type: "model/gltf-binary" }));
+        link.download = "prop-shark.glb";
+        link.textContent = "Download prop-shark.glb again";
+        document.body.append(link);
+        link.click();
+        log("Downloaded: move prop-shark.glb to src/game/models/.");
+      } catch (error) {
+        log(`Failed: ${error}`);
+        console.error(error);
+      }
+      document.body.dataset.done = "true";
+    </script>
+  </body>
+</html>

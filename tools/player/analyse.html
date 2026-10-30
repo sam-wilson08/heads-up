@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <title>Analyse player colours</title>
+  </head>
+  <body>
+    <pre id="out">Analysing…</pre>
+    <script type="module">
+      // Measures which colours sit at which heights on the Meshy player in tools/player/in/,
+      // scaled to 1.8 m and stood up as the game does, and how far out from the middle it reaches
+      // at each height, to tune the kit shader (src/game/kit.ts) and the waist for a new model.
+      import * as THREE from "three";
+      import { FBXLoader } from "three/addons/loaders/FBXLoader.js";
+
+      const IN = "/tools/player/in/";
+      const out = document.getElementById("out");
+      try {
+        const model = await new FBXLoader().loadAsync(`${IN}player.fbx`);
+        const image = await new Promise((resolve, reject) => {
+          const i = new Image();
+          i.onload = () => resolve(i);
+          i.onerror = reject;
+          i.src = `${IN}basecolor.png`;
+        });
+        const canvas = document.createElement("canvas");
+        canvas.width = image.width;
+        canvas.height = image.height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(image, 0, 0);
+        const pixels = ctx.getImageData(0, 0, image.width, image.height).data;
+
+        model.rotation.y = Math.PI;
+        model.updateMatrixWorld(true);
+        const box = new THREE.Box3().setFromObject(model);
+        const scale = 1.8 / box.getSize(new THREE.Vector3()).y;
+        const minY = box.min.y;
+
+        const hsv = (r, g, b) => {
+          const max = Math.max(r, g, b);
+          const min = Math.min(r, g, b);
+          const d = max - min;
+          let h = 0;
+          if (d > 0) {
+            if (max === r) h = ((g - b) / d + 6) % 6;
+            else if (max === g) h = (b - r) / d + 2;
+            else h = (r - g) / d + 4;
+            h /= 6;
+          }
+          return [h, max ? d / max : 0, max];
+        };
+        const classify = ([h, s, v]) => {
+          if (v < 0.2) return "black";
+          if (s < 0.15) return v > 0.75 ? "white" : "grey";
+          const redHue = h >= 0.94 || h <= 0.03;
+          if (redHue && s >= 0.5) return "red";
+          if (h >= 0.3 && h <= 0.55) return "green";
+          if (h >= 0.55 && h <= 0.75) return "blue";
+          if ((h >= 0.85 || redHue) && v > 0.6) return "pink";
+          if (h >= 0.1 && h <= 0.17 && s >= 0.5) return "yellow";
+          if (h > 0.03 && h < 0.13) return "skin";
+          return "other";
+        };
+
+        const BAND = 0.05;
+        const bands = new Map();
+        const stats = {};
+        const widths = [];
+        const world = new THREE.Vector3();
+        model.traverse((o) => {
+          if (!o.isMesh) return;
+          const position = o.geometry.attributes.position;
+          const uv = o.geometry.attributes.uv;
+          for (let i = 0; i < position.count; i++) {
+            world.fromBufferAttribute(position, i).applyMatrix4(o.matrixWorld);
+            const y = (world.y - minY) * scale;
+            const u = THREE.MathUtils.euclideanModulo(uv.getX(i), 1);
+            const v = THREE.MathUtils.euclideanModulo(uv.getY(i), 1);
+            const px = Math.min(image.width - 1, Math.floor(u * image.width));
+            const py = Math.min(image.height - 1, Math.floor((1 - v) * image.height));
+            const k = (py * image.width + px) * 4;
+            const c = hsv(pixels[k] / 255, pixels[k + 1] / 255, pixels[k + 2] / 255);
+            const kind = classify(c);
+            const band = Math.floor(y / BAND);
+            // How far out from the middle each height reaches, to tell the arms from the body.
+            const ax = Math.abs((world.x - (box.min.x + box.max.x) / 2) * scale);
+            const spread = (widths[Math.floor(y / 0.1)] ??= new Array(20).fill(0));
+            spread[Math.min(19, Math.floor(ax / 0.02))]++;
+            const row = bands.get(band) ?? {};
+            row[kind] = (row[kind] ?? 0) + 1;
+            bands.set(band, row);
+            const s = (stats[kind] ??= { n: 0, h: 0, s: 0, v: 0, hs: [] });
+            s.n++;
+            // Hue averaged as an angle, since red wraps round 0.
+            s.h += Math.cos(c[0] * Math.PI * 2);
+            s.v += c[2];
+            s.s += c[1];
+            if (s.hs.length < 4000) s.hs.push(c[0]);
+          }
+        });
+        const kinds = [
+          "red",
+          "green",
+          "yellow",
+          "white",
+          "grey",
+          "black",
+          "pink",
+          "skin",
+          "blue",
+          "other",
+        ];
+        const lines = [`band(m)  ${kinds.join("\t")}`];
+        for (const band of [...bands.keys()].sort((a, b) => a - b)) {
+          const row = bands.get(band);
+          lines.push(`${(band * BAND).toFixed(2)}  ${kinds.map((k) => row[k] ?? 0).join("\t")}`);
+        }
+        for (const [kind, s] of Object.entries(stats)) {
+          const sorted = [...s.hs].sort((a, b) => a - b);
+          const q = (f) => sorted[Math.floor(f * (sorted.length - 1))]?.toFixed(3);
+          lines.push(
+            `${kind}: n=${s.n} sat=${(s.s / s.n).toFixed(2)} val=${(s.v / s.n).toFixed(2)} hue q05=${q(0.05)} q50=${q(0.5)} q95=${q(0.95)}`,
+          );
+        }
+        lines.push("|x| per 0.02 m, by 0.1 m of height:");
+        widths.forEach((row, i) => row && lines.push(`${(i / 10).toFixed(1)}  ${row.join(" ")}`));
+        out.textContent = lines.join("\n");
+        document.body.dataset.ready = "1";
+      } catch (error) {
+        out.textContent = `Failed: ${error}`;
+        document.body.dataset.ready = "1";
+      }
+    </script>
+  </body>
+</html>

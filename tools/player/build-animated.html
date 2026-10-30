@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <title>Build the animated player.glb</title>
+    <style>
+      body {
+        font:
+          16px/1.5 system-ui,
+          sans-serif;
+        margin: 32px;
+        max-width: 760px;
+      }
+      pre {
+        background: #f2f2f2;
+        padding: 12px;
+        white-space: pre-wrap;
+      }
+      canvas {
+        background: #8fc3ea;
+        display: block;
+        margin-top: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Build the animated player.glb</h1>
+    <p>
+      Combines the player as Mixamo rigged it, with its idle, walk, jump, crouch and fall, and
+      Meshy's textures into one <code>player.glb</code>, then downloads it. Put these in
+      <code>tools/player/in/</code>: Mixamo's <code>idle.fbx</code> (Ready Idle),
+      <code>jump.fbx</code>, <code>walk.fbx</code>, <code>crouch.fbx</code> (Standing To Crouched,
+      or Crouched To Standing), <code>fall.fbx</code> (Falling Down) and
+      <code>header.fbx</code> (Headbutt, or Illegal Headbutt), each <b>FBX Binary</b>,
+      <b>With Skin</b>, at 30 fps, and Meshy's <code>basecolor.png</code>, <code>normal.png</code>,
+      <code>roughness.png</code> and <code>metallic.png</code>. The player comes from
+      <code>idle.fbx</code>; the others only need the same Mixamo skeleton, so a clip downloaded for
+      an earlier player still plays on it.
+    </p>
+    <p>
+      The model is in the game's metres: 1.8 m tall, standing on the origin, facing +Z as Meshy's
+      does. Its clips are in place, since the game moves the player itself: <code>idle</code> (the
+      idle, looped while the player stands still, with the feet kept where they stand);
+      <code>step_left</code> and <code>step_right</code> (the walk, and the walk mirrored);
+      <code>jump</code> (just the time in the air, with the lowest foot kept on the ground, for the
+      game to lift) and <code>jump_mirrored</code> (the same, mirrored, which the game takes turns
+      with so no two jumps in a row look alike); <code>header</code> (the headbutt, from just before
+      the head is furthest forward until it's back, with the feet kept where they stand, for the
+      game to play as the ball's headed); <code>duck</code> (the crouch, from standing down into it,
+      played backwards if Mixamo's comes up out of it, with the feet kept where they stand); and
+      <code>fall_right</code> and <code>fall_left</code> (the fall, back and to that side, and the
+      fall mirrored), which travel, since the player ends up lying where they land.
+    </p>
+    <pre id="log">Building…</pre>
+    <script type="module">
+      import * as THREE from "three";
+      import { FBXLoader } from "three/addons/loaders/FBXLoader.js";
+      import { GLTFExporter } from "three/addons/exporters/GLTFExporter.js";
+      import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+      import { mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
+
+      const IN = "/tools/player/in/";
+      /** How tall src/game/player.ts makes the player, so the model's metres are the game's. */
+      const PLAYER_HEIGHT = 1.8;
+      /** A foot raised more than this from where it stands in the bind pose is off the ground. */
+      const OFF_GROUND = 0.03;
+      const log = (line) => (document.getElementById("log").textContent += `\n${line}`);
+
+      /** A transform without its scale. Bones in the player's space are scaled; the model's aren't. */
+      const rigid = (m) => {
+        const p = new THREE.Vector3();
+        const q = new THREE.Quaternion();
+        m.decompose(p, q, new THREE.Vector3());
+        return new THREE.Matrix4().compose(p, q, new THREE.Vector3(1, 1, 1));
+      };
+
+      /**
+       * Draws the player standing, from the front, back and side, then each clip from behind, as
+       * the game's camera sees them, from its start (left) to its end (right).
+       */
+      const preview = ({ scene: player, animations }) => {
+        const [w, h, columns] = [150, 240, 5];
+        const rows = 1 + animations.length;
+        const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+        renderer.setSize(w * columns, h * rows);
+        renderer.setScissorTest(true);
+        document.body.append(renderer.domElement);
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x8fc3ea);
+        scene.add(new THREE.HemisphereLight(0xffffff, 0x557744, 2), player);
+        const sun = new THREE.DirectionalLight(0xffffff, 2);
+        sun.position.set(2, 4, 3);
+        scene.add(sun);
+        const centre = new THREE.Vector3(0, PLAYER_HEIGHT / 2, 0);
+        const view = (row, column, direction) => {
+          const camera = new THREE.PerspectiveCamera(32, w / h, 0.1, 50);
+          camera.position.copy(centre).addScaledVector(direction, 4.6);
+          camera.lookAt(centre);
+          const y = (rows - 1 - row) * h;
+          renderer.setViewport(column * w, y, w, h);
+          renderer.setScissor(column * w, y, w, h);
+          renderer.render(scene, camera);
+        };
+        const sides = [
+          new THREE.Vector3(0, 0, 1),
+          new THREE.Vector3(0, 0, -1),
+          new THREE.Vector3(1, 0, 0),
+        ];
+        sides.forEach((direction, column) => view(0, column, direction));
+        const mixer = new THREE.AnimationMixer(player);
+        animations.forEach((clip, i) => {
+          for (let column = 0; column < columns; column++) {
+            mixer.stopAllAction();
+            const action = mixer.clipAction(clip).reset().setLoop(THREE.LoopOnce, 1);
+            action.clampWhenFinished = true;
+            action.play();
+            mixer.setTime((clip.duration * column) / (columns - 1));
+            view(1 + i, column, sides[1]);
+          }
+        });
+        log(
+          `Preview: standing, from the front, back and side; then from behind, ${animations
+            .map((c) => c.name)
+            .join(", ")}`,
+        );
+      };
+
+      try {
+        const loader = new FBXLoader();
+        // The player and its rig come from the idle. The other clips play on that rig by their
+        // bones' names, so one downloaded for an earlier player on Mixamo's skeleton still fits.
+        const [source, walk, crouch, fall, jumping, header] = await Promise.all(
+          ["idle", "walk", "crouch", "fall", "jump", "header"].map((n) =>
+            loader.loadAsync(`${IN}${n}.fbx`),
+          ),
+        );
+        let mesh;
+        source.traverse((o) => {
+          if (o.isSkinnedMesh) mesh = o;
+        });
+        source.updateMatrixWorld(true);
+        const bones = mesh.skeleton.bones;
+        const parents = bones.map((b) => bones.indexOf(b.parent));
+        const named = (end) => bones.findIndex((b) => b.name.endsWith(end));
+
+        // The player's space: the bind pose scaled to the game's height, standing on the origin with
+        // the hips over it, so a mirror across x = 0 goes down the middle of the body.
+        const hips = named("Hips");
+        if (parents[hips] >= 0) throw new Error("the hips should be the rig's root");
+        const hipsAt = new THREE.Vector3().setFromMatrixPosition(
+          mesh.skeleton.boneInverses[hips].clone().invert(),
+        );
+        const geometry = mesh.geometry.clone().applyMatrix4(mesh.bindMatrix);
+        geometry.computeBoundingBox();
+        const { min, max } = geometry.boundingBox;
+        const k = PLAYER_HEIGHT / (max.y - min.y);
+        const toPlayer = new THREE.Matrix4()
+          .makeScale(k, k, k)
+          .premultiply(
+            new THREE.Matrix4().makeTranslation(-k * hipsAt.x, -k * min.y, -k * hipsAt.z),
+          );
+        geometry.applyMatrix4(toPlayer);
+        const bind = mesh.skeleton.boneInverses.map((inverse) =>
+          toPlayer.clone().multiply(inverse.clone().invert()),
+        );
+
+        /** Every bone's place in the player's space at each of a clip's keyframes, played on the rig. */
+        const sample = (clip) => {
+          const mixer = new THREE.AnimationMixer(source);
+          const action = mixer.clipAction(clip).setLoop(THREE.LoopOnce, 1);
+          action.clampWhenFinished = true;
+          action.play();
+          const times = [...new Set(clip.tracks.flatMap((t) => [...t.times]))].sort(
+            (a, b) => a - b,
+          );
+          const frames = times.map((t) => {
+            mixer.setTime(t);
+            source.updateMatrixWorld(true);
+            return bones.map((b) => toPlayer.clone().multiply(b.matrixWorld));
+          });
+          mixer.stopAllAction();
+          mixer.uncacheRoot(source);
+          return { times, frames };
+        };
+
+        // Mirroring swaps the sides: each bone turns as its opposite does, reflected across the
+        // body, from its own bind pose and about its own joint. Meshy's hands aren't posed alike,
+        // so a hand put where its opposite's reflection goes would come off the wrist.
+        const opposite = bones.map((b) => {
+          const other = b.name.includes("Left")
+            ? b.name.replace("Left", "Right")
+            : b.name.replace("Right", "Left");
+          const i = bones.findIndex((o) => o.name === other);
+          if (i < 0) throw new Error(`${b.name} has no opposite`);
+          return i;
+        });
+        const turnOf = (m) => new THREE.Quaternion().setFromRotationMatrix(rigid(m));
+        const placeOf = (m) => new THREE.Vector3().setFromMatrixPosition(m);
+        const bindTurns = bind.map(turnOf);
+        /** Each bone's place on its parent, in the parent's own frame. */
+        const offsets = bind.map((m, i) =>
+          parents[i] < 0
+            ? undefined
+            : placeOf(m)
+                .sub(placeOf(bind[parents[i]]))
+                .applyQuaternion(bindTurns[parents[i]].clone().invert()),
+        );
+        const mirrored = (frames) =>
+          frames.map((frame) => {
+            const placed = [];
+            const place = (i) => {
+              if (placed[i]) return placed[i];
+              const j = opposite[i];
+              // The opposite's turn from its bind pose, reflected across x = 0.
+              const delta = turnOf(frame[j]).multiply(bindTurns[j].clone().invert());
+              const turn = delta.set(delta.x, -delta.y, -delta.z, delta.w).multiply(bindTurns[i]);
+              const parent = parents[i] < 0 ? undefined : place(parents[i]);
+              const at = parent
+                ? offsets[i].clone().applyQuaternion(parent.turn).add(parent.at)
+                : placeOf(frame[j]).multiply(new THREE.Vector3(-1, 1, 1));
+              return (placed[i] = { at, turn });
+            };
+            return frame.map((_, i) => {
+              const { at, turn } = place(i);
+              return new THREE.Matrix4().compose(at, turn, new THREE.Vector3(1, 1, 1));
+            });
+          });
+
+        /** A clip of the bones' local transforms, from their places in the player's space. */
+        const toClip = (name, times, frames) => {
+          const tracks = bones.flatMap((bone, i) => {
+            const [positions, quaternions] = [[], []];
+            const [p, q, s] = [new THREE.Vector3(), new THREE.Quaternion(), new THREE.Vector3()];
+            for (const frame of frames) {
+              const parent = parents[i] < 0 ? new THREE.Matrix4() : rigid(frame[parents[i]]);
+              parent.invert().multiply(rigid(frame[i])).decompose(p, q, s);
+              // q and -q are the same turn; keep to the one nearer the last, so it doesn't spin.
+              const last = quaternions.slice(-4);
+              if (
+                last.length &&
+                last[0] * q.x + last[1] * q.y + last[2] * q.z + last[3] * q.w < 0
+              ) {
+                q.set(-q.x, -q.y, -q.z, -q.w);
+              }
+              positions.push(...p.toArray());
+              quaternions.push(...q.toArray());
+            }
+            return [
+              new THREE.VectorKeyframeTrack(`${bone.name}.position`, times, positions),
+              new THREE.QuaternionKeyframeTrack(`${bone.name}.quaternion`, times, quaternions),
+            ];
+          });
+          return new THREE.AnimationClip(name, -1, tracks);
+        };
+
+        const standing = placeOf(bind[hips]);
+        const hipsTrack = (clip) =>
+          clip.tracks.find((t) => t.name === `${bones[hips].name}.position`);
+        /** Holds the hips over where they stand, across and forwards, so the clip stays in its lane. */
+        const holdHips = (clip) => {
+          const v = hipsTrack(clip).values;
+          for (let i = 0; i < v.length; i += 3) [v[i], v[i + 2]] = [standing.x, standing.z];
+        };
+        /** Lowers the hips, and everything with them, by an amount at each frame. */
+        const lowerHips = (clip, drops) => {
+          const v = hipsTrack(clip).values;
+          drops.forEach((drop, f) => (v[f * 3 + 1] -= drop));
+        };
+        const feet = ["LeftFoot", "LeftToeBase", "RightFoot", "RightToeBase"].map(named);
+        /** How high the lowest foot is over where it stands in the bind pose. */
+        const raised = (frame) =>
+          Math.min(...feet.map((i) => frame[i].elements[13] - bind[i].elements[13]));
+        // Mixamo stands its clips on the ground, but the bind pose where Meshy's model was, centred
+        // on the origin, so each clip comes down to stand where the bind pose does.
+
+        // The walk travels across, or steps on the spot if it was downloaded in place. On the spot,
+        // the foot that's lifted swings the way it would go, from the hips, while the one on the
+        // ground slides back, so each foot's swing, counted by how much higher than the other it
+        // is, tells which way it steps. The game moves the player itself, so it's held in place.
+        const walked = sample(walk.animations[0]);
+        const walkDrops = walked.frames.map(() => raised(walked.frames[0]));
+        const hipsX = (frame) => frame[hips].elements[12];
+        const travel = hipsX(walked.frames.at(-1)) - hipsX(walked.frames[0]);
+        const [leftFoot, rightFoot] = ["LeftFoot", "RightFoot"].map(named);
+        /** Which way a foot swings across, from the hips, the more the higher it's lifted. */
+        const swung = (foot, other) =>
+          walked.frames.slice(1).reduce((sum, frame, f) => {
+            const last = walked.frames[f];
+            const lifted = (k) => Math.max(0, k[foot].elements[13] - k[other].elements[13]);
+            const across = (k) => k[foot].elements[12] - hipsX(k);
+            return sum + (across(frame) - across(last)) * Math.min(lifted(last), lifted(frame));
+          }, 0);
+        const onTheSpot = Math.abs(travel) < 0.05;
+        const way = onTheSpot ? swung(leftFoot, rightFoot) + swung(rightFoot, leftFoot) : travel;
+        // Facing +Z, the player's own left is +X.
+        const [out, back] = way > 0 ? ["step_left", "step_right"] : ["step_right", "step_left"];
+        const step = toClip(out, walked.times, walked.frames);
+        const stepBack = toClip(back, walked.times, mirrored(walked.frames));
+        for (const clip of [step, stepBack]) {
+          holdHips(clip);
+          lowerHips(clip, walkDrops);
+        }
+        log(
+          `${out}: Mixamo's walk, which ` +
+            (onTheSpot
+              ? `steps on the spot, swinging its feet to the `
+              : `goes ${Math.round(Math.abs(travel) * 100)} cm to the `) +
+            `${out === "step_left" ? "left" : "right"}, held in place; ${back}: the same, mirrored`,
+        );
+
+        // The jump keeps only the time in the air, from the last moment on the ground at take-off
+        // to touching down again, since the game's jump starts in the air. The game lifts the
+        // player, so the hips come down by however high the lowest foot is, keeping it grounded.
+        const jumped = sample(jumping.animations[0]);
+        const jumpDrops = jumped.frames.map(raised);
+        const lift = jumpDrops.map((h) => h - jumpDrops[0]);
+        const takeoff = lift.findIndex((h) => h > OFF_GROUND);
+        const landing = lift.findIndex((h, i) => i > takeoff && h <= OFF_GROUND);
+        if (takeoff < 1 || landing < 0) throw new Error("the jump never leaves the ground");
+        const [from, to] = [takeoff - 1, landing + 1];
+        const airTimes = jumped.times.slice(from, to).map((t) => t - jumped.times[from]);
+        const airFrames = jumped.frames.slice(from, to);
+        const jump = toClip("jump", airTimes, airFrames);
+        lowerHips(jump, jumpDrops.slice(from, to));
+        holdHips(jump);
+        // The same jump mirrored, so the arms and legs swing the other way. The game takes turns
+        // with the two, so no two jumps in a row look the same.
+        const flipped = mirrored(airFrames);
+        const jumpMirrored = toClip("jump_mirrored", airTimes, flipped);
+        lowerHips(jumpMirrored, flipped.map(raised));
+        holdHips(jumpMirrored);
+        log(
+          `jump: ${jump.duration.toFixed(2)} s in the air, from ${jumped.times[from].toFixed(2)} s ` +
+            `into Mixamo's ${jumping.animations[0].duration.toFixed(2)} s; its feet got ` +
+            `${Math.round(Math.max(...lift) * 100)} cm up; jump_mirrored: the same, mirrored`,
+        );
+
+        /** Where the feet are between them, across (12) or forwards (14), at a frame. */
+        const feetAt = (frame, k) =>
+          (frame[leftFoot].elements[k] + frame[rightFoot].elements[k]) / 2;
+        /**
+         * Moves each frame across and forwards so the feet stay where they are in the first, with
+         * the hips over where they stand then.
+         */
+        const plantFeet = (clip, frames) => {
+          const v = hipsTrack(clip).values;
+          const [x, z] = [
+            standing.x - v[0] + feetAt(frames[0], 12),
+            standing.z - v[2] + feetAt(frames[0], 14),
+          ];
+          frames.forEach((frame, f) => {
+            v[f * 3] += x - feetAt(frame, 12);
+            v[f * 3 + 2] += z - feetAt(frame, 14);
+          });
+        };
+
+        // The duck goes from standing down into the crouch; the game plays it down and back up
+        // again. Mixamo's standing-to-crouched does that already, and its crouched-to-standing is
+        // played backwards. A crouch can step as it goes, so it's the feet that are kept where they
+        // stand, rather than the hips, with the lowest on the ground.
+        /** How high the head is once the frame's lowest foot is on the ground. */
+        const headY = (frame) => frame[named("Head")].elements[13] - raised(frame);
+        const crouched = sample(crouch.animations[0]);
+        const rises = headY(crouched.frames.at(-1)) > headY(crouched.frames[0]);
+        const ducking = rises ? [...crouched.frames].reverse() : crouched.frames;
+        const duck = toClip("duck", crouched.times, ducking);
+        lowerHips(duck, ducking.map(raised));
+        plantFeet(duck, ducking);
+        log(
+          `duck: ${duck.duration.toFixed(2)} s, Mixamo's crouch${rises ? " backwards" : ""}; the ` +
+            `head goes from ${Math.round(headY(ducking[0]) * 100)} cm up to ` +
+            `${Math.round(headY(ducking.at(-1)) * 100)} cm`,
+        );
+
+        // The fall goes back and to the player's right, and they end up lying where they land, so
+        // it keeps the hips' travel, from over where they stand. Mirrored, it goes to their left.
+        const fell = sample(fall.animations[0]);
+        const fallDrops = fell.frames.map(() => raised(fell.frames[0]));
+        const fallRight = toClip("fall_right", fell.times, fell.frames);
+        const fallLeft = toClip("fall_left", fell.times, mirrored(fell.frames));
+        for (const clip of [fallRight, fallLeft]) {
+          const v = hipsTrack(clip).values;
+          const [x, z] = [standing.x - v[0], standing.z - v[2]];
+          for (let i = 0; i < v.length; i += 3) [v[i], v[i + 2]] = [v[i] + x, v[i + 2] + z];
+          lowerHips(clip, fallDrops);
+        }
+        /** How far the hips go over a clip, in centimetres, across (0) or forwards (2). */
+        const travelled = (clip, k) => {
+          const v = hipsTrack(clip).values;
+          return Math.round((v.at(k - 3) - v[k]) * 100);
+        };
+        log(
+          `fall_right: ${fallRight.duration.toFixed(2)} s, the hips ending ` +
+            `${Math.abs(travelled(fallRight, 0))} cm to the side and ${-travelled(fallRight, 2)} cm ` +
+            `back; fall_left: the same, mirrored`,
+        );
+
+        // The idle loops while the player stands still. It barely moves, but it's kept on the
+        // spot all the same: the feet where they stand, and the lowest on the ground.
+        const idled = sample(source.animations[0]);
+        const idling = toClip("idle", idled.times, idled.frames);
+        lowerHips(idling, idled.frames.map(raised));
+        plantFeet(idling, idled.frames);
+        log(
+          `idle: ${idling.duration.toFixed(2)} s, looped; the head ` +
+            `${Math.round(headY(idled.frames[0]) * 100)} cm up`,
+        );
+
+        // The header is Mixamo's headbutt, cut down to the nod itself: from just before the head is
+        // furthest forward of the hips, which is when it meets the ball, until it's back. The game
+        // starts it as the ball's headed, so a long wind-up would come too late. It's only the
+        // upper body, from the spine up: the headbutt lunges into a crouch, and headers come too
+        // often for that, so the legs carry on with whatever they're doing, standing, stepping or
+        // jumping, while the head and shoulders snap forward.
+        const butted = sample(header.animations[0]);
+        const head = named("Head");
+        const ahead = butted.frames.map((f) => f[head].elements[14] - f[hips].elements[14]);
+        const contact = ahead.indexOf(Math.max(...ahead));
+        const [windUp, followThrough] = [0.15, 0.6];
+        const kept = butted.times.flatMap((t, i) =>
+          t >= butted.times[contact] - windUp && t <= butted.times[contact] + followThrough
+            ? [i]
+            : [],
+        );
+        const nodding = kept.map((i) => butted.frames[i]);
+        const heading = toClip(
+          "header",
+          kept.map((i) => butted.times[i] - butted.times[kept[0]]),
+          nodding,
+        );
+        const spineAt = named("Spine");
+        const fromSpine = (i) => i === spineAt || (parents[i] >= 0 && fromSpine(parents[i]));
+        const upper = new Set(bones.filter((_, i) => fromSpine(i)).map((b) => b.name));
+        heading.tracks = heading.tracks.filter((t) => upper.has(t.name.replace(/\.[^.]+$/, "")));
+        log(
+          `header: ${heading.duration.toFixed(2)} s of Mixamo's ` +
+            `${header.animations[0].duration.toFixed(2)} s headbutt, the ${upper.size} bones from ` +
+            `the spine up; the head furthest forward ` +
+            `(${Math.round(Math.max(...ahead) * 100)} cm ahead of the hips) ` +
+            `${(butted.times[contact] - butted.times[kept[0]]).toFixed(2)} s in`,
+        );
+
+        const textures = new THREE.TextureLoader();
+        const texture = async (file, colour) => {
+          const t = await textures.loadAsync(`${IN}${file}`);
+          t.colorSpace = colour ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+          t.userData.mimeType = "image/jpeg";
+          return t;
+        };
+        const material = new THREE.MeshStandardMaterial({
+          name: "player",
+          map: await texture("basecolor.png", true),
+          normalMap: await texture("normal.png", false),
+          roughnessMap: await texture("roughness.png", false),
+          metalnessMap: await texture("metallic.png", false),
+          roughness: 1,
+          metalness: 1,
+        });
+
+        // A fresh rig in the player's space, in the bind pose, with no scale on any bone.
+        const player = new THREE.Group();
+        player.name = "player";
+        const rig = bones.map((b) => Object.assign(new THREE.Bone(), { name: b.name }));
+        bones.forEach((_, i) => {
+          const local =
+            parents[i] < 0
+              ? rigid(bind[i])
+              : rigid(bind[parents[i]]).invert().multiply(rigid(bind[i]));
+          local.decompose(rig[i].position, rig[i].quaternion, rig[i].scale);
+          (parents[i] < 0 ? player : rig[parents[i]]).add(rig[i]);
+        });
+        // Mixamo returns a vertex per triangle corner; merging them shrinks the mesh about fivefold.
+        const body = new THREE.SkinnedMesh(mergeVertices(geometry, 1e-4), material);
+        body.name = "body";
+        player.add(body);
+        player.updateMatrixWorld(true);
+        body.bind(
+          new THREE.Skeleton(
+            rig,
+            bind.map((m) => rigid(m).invert()),
+          ),
+          new THREE.Matrix4(),
+        );
+
+        const glb = await new GLTFExporter().parseAsync(player, {
+          binary: true,
+          animations: [
+            idling,
+            step,
+            stepBack,
+            jump,
+            jumpMirrored,
+            heading,
+            duck,
+            fallRight,
+            fallLeft,
+          ],
+          maxTextureSize: 1024,
+        });
+
+        // Checks the file itself: what the game will load.
+        const built = await new GLTFLoader().parseAsync(glb, "");
+        const size = new THREE.Box3().setFromObject(built.scene).getSize(new THREE.Vector3());
+        log(
+          `Size: ${size
+            .toArray()
+            .map((n) => n.toFixed(2))
+            .join(" × ")} m (x × y × z)`,
+        );
+        for (const c of built.animations) log(`${c.name}: ${c.duration.toFixed(2)} s`);
+        log(
+          `${body.geometry.attributes.position.count} vertices, ${bones.length} bones, ` +
+            `${Math.round(glb.byteLength / 1024)} KB`,
+        );
+        preview(built);
+
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(new Blob([glb], { type: "model/gltf-binary" }));
+        link.download = "player.glb";
+        link.textContent = "Download player.glb again";
+        document.body.append(link);
+        link.click();
+        log("Downloaded player.glb: move it to src/game/models/.");
+      } catch (error) {
+        log(`Failed: ${error}`);
+        console.error(error);
+      }
+    </script>
+  </body>
+</html>

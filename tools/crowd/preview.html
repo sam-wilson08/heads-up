@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <title>Crowd preview</title>
+    <style>
+      body {
+        font:
+          14px/1.4 system-ui,
+          sans-serif;
+        margin: 16px;
+        background: #1b3354;
+        color: #fff;
+      }
+      section {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 24px;
+      }
+      figure {
+        margin: 0;
+      }
+      canvas {
+        display: block;
+        border-radius: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Crowd preview</h1>
+    <p>
+      The first eight of each crowd up close, standing and then cheering, in the kit named in the
+      address (<code>?kit=rossoneri</code>; gold by default). Then each venue as the game shows it
+      on a phone, with the whole crowd out, standing and cheering.
+    </p>
+    <section id="close"></section>
+    <section id="venues"></section>
+    <script type="module">
+      import * as THREE from "three";
+      import { kitById } from "/src/kits.ts";
+      import { VENUES } from "/src/venues.ts";
+      import { buildCrowd, buildFigure, CROWD_SIZE } from "/src/game/crowd.ts";
+      import { buildScenery, sceneryReady } from "/src/game/scenery.ts";
+
+      const kit = kitById(new URLSearchParams(location.search).get("kit") ?? "gold");
+      const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+      renderer.setPixelRatio(2);
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+      const copy = (into, caption) => {
+        const out = document.createElement("canvas");
+        out.width = renderer.domElement.width;
+        out.height = renderer.domElement.height;
+        out.style.width = `${out.width / 2}px`;
+        out.getContext("2d").drawImage(renderer.domElement, 0, 0);
+        const figure = document.createElement("figure");
+        const label = document.createElement("figcaption");
+        label.textContent = caption;
+        figure.append(out, label);
+        into.append(figure);
+      };
+
+      const CLOSE = { width: 760, height: 250 };
+      renderer.setSize(CLOSE.width, CLOSE.height);
+      const close = document.getElementById("close");
+      for (const crowd of ["people", "penguins", "aliens", "robots", "fish"]) {
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x8fc3ea);
+        scene.add(new THREE.HemisphereLight(0xffffff, 0x6a8f4a, 1.6));
+        const sun = new THREE.DirectionalLight(0xfff4e0, 2.2);
+        sun.position.set(3, 8, 6);
+        scene.add(sun);
+        const ground = new THREE.Mesh(
+          new THREE.PlaneGeometry(40, 40),
+          new THREE.MeshLambertMaterial({ color: 0x5f9d40 }),
+        );
+        ground.rotation.x = -Math.PI / 2;
+        scene.add(ground);
+        const figures = Array.from({ length: 8 }, (_, i) => {
+          const figure = buildFigure(crowd, i, kit, i < 4 ? -1 : 1);
+          figure.object.position.x = (i - 3.5) * 0.85;
+          scene.add(figure.object);
+          return figure;
+        });
+        const camera = new THREE.PerspectiveCamera(30, CLOSE.width / CLOSE.height, 0.1, 100);
+        camera.position.set(0, 1.2, 5.2);
+        camera.lookAt(0, 0.85, 0);
+        for (const [since, label] of [
+          [10, "standing"],
+          [0.3, "cheering"],
+        ]) {
+          for (const figure of figures) {
+            const x = figure.object.position.x;
+            figure.pose(1, since);
+            figure.object.position.x = x;
+          }
+          renderer.render(scene, camera);
+          copy(close, `${crowd}, ${label}`);
+        }
+      }
+
+      const PHONE = { width: 195, height: 422 };
+      renderer.setSize(PHONE.width, PHONE.height);
+      const venues = document.getElementById("venues");
+      for (const venue of VENUES) {
+        const scene = new THREE.Scene();
+        await sceneryReady(venue.id);
+        const scenery = buildScenery(venue, scene, renderer);
+        const crowd = buildCrowd(venue.crowd, kit);
+        scene.add(crowd.object);
+        const camera = new THREE.PerspectiveCamera(50, PHONE.width / PHONE.height, 0.1, 400);
+        camera.position.set(0, 2.2, 3.6);
+        camera.lookAt(0, 0.6, -14);
+        crowd.layout(camera);
+        scenery.update(0, 0);
+        crowd.update(10, 1, CROWD_SIZE);
+        crowd.update(10, 1, CROWD_SIZE);
+        renderer.render(scene, camera);
+        copy(venues, venue.name);
+        crowd.cheer(20);
+        crowd.update(20.25, 1, CROWD_SIZE);
+        renderer.render(scene, camera);
+        copy(venues, `${venue.name}, cheering`);
+      }
+      document.body.dataset.ready = "1";
+    </script>
+  </body>
+</html>

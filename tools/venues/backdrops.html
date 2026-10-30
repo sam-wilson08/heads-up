@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <title>Venue backdrops</title>
+    <style>
+      body {
+        font:
+          14px/1.4 system-ui,
+          sans-serif;
+        margin: 16px;
+        background: #0b1a3a;
+        color: #fff;
+      }
+      figure {
+        margin: 0 0 24px;
+      }
+      img {
+        display: block;
+        max-width: 100%;
+        border-radius: 6px;
+        background: repeating-conic-gradient(#333 0% 25%, #444 0% 50%) 0 0 / 16px 16px;
+      }
+      code {
+        color: #7ff3ff;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Venue backdrops</h1>
+    <p>
+      Paints each venue's backdrop: its sky and everything round the pitch that stays put, built in
+      3D from the venue's own scenery and pictured from where the game's camera stands, then saved
+      as <code>&lt;venue&gt;.webp</code>. Move the files into <code>src/game/backdrops/</code>. Each
+      picture holds three parts of the backdrop's card side by side: the middle, finely, and either
+      side of it, more coarsely (see <code>src/game/backdrop.ts</code>). Options in the address:
+      <code>?venue=park,moon</code> for some venues only, and <code>?quality=0.8</code> for the WebP
+      quality to start from, which is lowered until a picture's under 200 KB.
+    </p>
+    <main id="backdrops"></main>
+    <script type="module">
+      import * as THREE from "three";
+      import { VENUES } from "/src/venues.ts";
+      import { BACKDROP_Z, EYE, paintingCameras, PICTURE } from "/src/game/backdrop.ts";
+      import { buildGround } from "/src/game/ground.ts";
+      import { lightVenue, lookOf, prepareRenderer, venueEnvironment } from "/src/game/look.ts";
+      import { craters } from "/src/game/scenery.ts";
+      import { buildSky, skyDome } from "/src/game/sky.ts";
+      import { ballStop, range, sea, stars, treeLine } from "/src/game/props/backdrop.ts";
+      import { castleHall } from "/src/game/props/castle.ts";
+      import { colosseumStands } from "/src/game/props/colosseum.ts";
+      import { cupFinalStands } from "/src/game/props/cupfinal.ts";
+      import { funfair } from "/src/game/props/funfair.ts";
+      import { palms } from "/src/game/props/palms.ts";
+      import { earth, marsMoons, ringedPlanet } from "/src/game/props/planets.ts";
+      import { rippleLight, sunShafts } from "/src/game/props/seabed.ts";
+      import { spaceStadium } from "/src/game/props/spacestadium.ts";
+      import { volcano } from "/src/game/props/volcano.ts";
+
+      /** How long the scenery's been going when it's pictured: clouds drift, the wheel turns. */
+      const SECONDS = 14;
+      /** How many times finer each part is drawn than it's kept, smoothed down for its edges. */
+      const FINE = 2;
+      /** The most a picture should be, in bytes. */
+      const MOST = 200 * 1024;
+
+      /**
+       * What stays put round each venue, which its backdrop is painted from. What moves, or what a
+       * twist needs, isn't here: the game draws it live in front (see src/game/scenery.ts).
+       */
+      const SCENERY = {
+        // A council pitch: tall netting behind the goal, a line of old trees round the park, and
+        // the hills beyond.
+        park: (venue) => [
+          ballStop({ z: -37, from: -30, to: 30, height: 5.5 }),
+          treeLine(["broadleaf", "broadleaf", "poplar"], {
+            z: -72,
+            rows: 2,
+            from: -110,
+            to: 110,
+            spacing: 5.5,
+            height: [11, 15],
+            air: { colour: venue.haze, half: 320 },
+            undergrowth: true,
+          }),
+          range(
+            { lit: "#86a07a", shade: "#61795a", forest: 0.7, rugged: 0.1, seed: 4 },
+            { distance: 330, height: 30 },
+          ),
+        ],
+        // The sea, palms, and a wooded headland across the bay.
+        beach: () => [
+          sea(),
+          palms(),
+          range(
+            { lit: "#8fa883", shade: "#5a7458", forest: 0.85, rugged: 0.3, seed: 12 },
+            { distance: 700, height: 55, from: -62, to: -16, sink: 1, tapers: true },
+          ),
+        ],
+        // A pine forest heavy with snow behind the goal, under the Alps.
+        snow: (venue) => [
+          treeLine(["snowyPine", "snowyPine", "pine"], {
+            z: -62,
+            rows: 2,
+            spacing: 3.6,
+            height: [8, 12],
+            tint: "#eef3fa",
+            air: { colour: venue.haze, half: 110 },
+          }),
+          range(
+            { lit: "#f4f7fb", shade: "#8e9db4", snow: 0.8, rugged: 1, seed: 9 },
+            { distance: 420, height: 80 },
+          ),
+        ],
+        // Grey hills on the near horizon, sharp-edged with no air to soften them, and the Earth.
+        moon: () => [
+          stars(260),
+          earth(),
+          craters(0x8a8a8a, 18, BACKDROP_Z, -1000),
+          range(
+            { lit: "#a9a8a4", shade: "#262628", rugged: 0.3, seed: 21 },
+            { distance: 260, height: 18 },
+          ),
+        ],
+        // Rocky outcrops looming out of the murk, shafts of light, and the light on the sea floor.
+        underwater: () => [
+          sunShafts(),
+          rippleLight(BACKDROP_Z, -120),
+          range(
+            { lit: "#2f8088", shade: "#103c46", rugged: 0.6, seed: 41 },
+            { distance: 70, height: 16 },
+          ),
+        ],
+        volcano: () => [volcano()],
+        // Mesas on the horizon, and nearer, lower ridges, all rust and butterscotch in the dust.
+        mars: () => [
+          marsMoons(),
+          craters(0x8f3d1f, 18, BACKDROP_Z, -1000),
+          range(
+            { lit: "#c98a5e", shade: "#7a3c22", rugged: 0.7, seed: 31 },
+            { distance: 380, height: 46 },
+          ),
+          range(
+            { lit: "#b8643a", shade: "#6a2c18", rugged: 0.35, seed: 33 },
+            { distance: 150, height: 9, from: -70, to: 70 },
+          ),
+        ],
+        space: () => [stars(320, 0xd8c8ff), ringedPlanet(), spaceStadium()],
+        // The fair's in a park: trees behind the goal, dark against the evening sky.
+        funfair: (venue) => [
+          funfair(),
+          treeLine(["broadleaf", "broadleaf", "poplar"], {
+            z: -74,
+            rows: 2,
+            from: -110,
+            to: 110,
+            spacing: 6,
+            height: [10, 14],
+            tint: "#b9a99c",
+            air: { colour: venue.haze, half: 260 },
+            undergrowth: true,
+          }),
+        ],
+        castle: () => [stars(140), castleHall()],
+        final: () => [stars(90), cupFinalStands()],
+        colosseum: () => [colosseumStands()],
+      };
+
+      const query = new URLSearchParams(location.search);
+      const wanted = query.get("venue")?.split(",");
+      const startQuality = Number(query.get("quality") ?? 0.82);
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+      renderer.setPixelRatio(1);
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      const list = document.getElementById("backdrops");
+      const sizes = [];
+
+      /** A venue's scene as the backdrop's painted from: everything that stays put, lit and hazy. */
+      const sceneFor = (venue) => {
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(venue.haze);
+        prepareRenderer(renderer, venue);
+        renderer.shadowMap.enabled = false;
+        lightVenue(venue, scene, false);
+        // The haze that's between the camera and the card is the game's to add (see backdrop.ts),
+        // so only what's beyond the card is painted.
+        const [near, far] = lookOf(venue.id).haze;
+        scene.fog = new THREE.Fog(venue.haze, Math.max(near, EYE.z - BACKDROP_Z), far);
+        const dome = skyDome(venue);
+        const environment = venueEnvironment(renderer, venue, dome);
+        scene.environment = environment.texture;
+        scene.environmentIntensity = lookOf(venue.id).environment;
+        const sky = buildSky(venue);
+        sky.update(SECONDS);
+        scene.add(sky.object, buildGround(venue, renderer.capabilities.getMaxAnisotropy(), "far"));
+        for (const made of SCENERY[venue.id]?.(venue) ?? []) {
+          if (made instanceof THREE.Object3D) scene.add(made);
+          else {
+            made.update(SECONDS, 1 / 60);
+            scene.add(made.object);
+          }
+        }
+        return scene;
+      };
+
+      /** Paints a venue's backdrop picture: each part of the card, side by side, edges carried out. */
+      const paint = (venue) => {
+        const scene = sceneFor(venue);
+        const picture = document.createElement("canvas");
+        picture.width = PICTURE.width;
+        picture.height = PICTURE.height;
+        const ctx = picture.getContext("2d");
+        ctx.imageSmoothingQuality = "high";
+        for (const { camera, region } of paintingCameras()) {
+          const [w, h] = region.size;
+          const [x, y] = region.at;
+          renderer.setSize(w * FINE, h * FINE, false);
+          renderer.render(scene, camera);
+          ctx.drawImage(renderer.domElement, x, y, w, h);
+          // Its edge pixels carried a few pixels out, into the room between the parts, so a
+          // smaller copy of the picture doesn't bleed black into them.
+          const gutter = 8;
+          ctx.drawImage(picture, x + w - 1, y, 1, h, x + w, y, gutter, h);
+          ctx.drawImage(picture, x, y + h - 1, w + gutter, 1, x, y + h, w + gutter, gutter);
+        }
+        return picture;
+      };
+
+      /** The picture as WebP, as fine as it can be under the most a picture should be. */
+      const encode = async (picture) => {
+        for (let quality = startQuality; ; quality -= 0.04) {
+          const blob = await new Promise((resolve) =>
+            picture.toBlob(resolve, "image/webp", quality),
+          );
+          if (blob.size <= MOST || quality <= 0.5) return { blob, quality };
+        }
+      };
+
+      for (const venue of VENUES.filter((v) => !wanted || wanted.includes(v.id))) {
+        const picture = paint(venue);
+        const { blob, quality } = await encode(picture);
+        sizes.push([venue.id, blob.size]);
+        const url = URL.createObjectURL(blob);
+        const figure = document.createElement("figure");
+        const image = document.createElement("img");
+        image.src = url;
+        const caption = document.createElement("figcaption");
+        caption.textContent = `${venue.name}: ${venue.id}.webp, ${Math.round(blob.size / 1024)} KB at ${quality.toFixed(2)}`;
+        figure.append(image, caption);
+        list.append(figure);
+        const download = document.createElement("a");
+        download.href = url;
+        download.download = `${venue.id}.webp`;
+        download.click();
+      }
+      const total = sizes.reduce((sum, [, size]) => sum + size, 0);
+      const summary = document.createElement("p");
+      summary.textContent = `${sizes.length} backdrops, ${Math.round(total / 1024)} KB in all.`;
+      list.append(summary);
+      document.body.dataset.ready = "true";
+    </script>
+  </body>
+</html>

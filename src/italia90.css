@@ -1,0 +1,570 @@
+/* Notti magiche: the game dressed as a summer night in Italy in 1990, as that summer's print and
+   television drew it. Flat colour, as ink on paper is, in the azzurri's blue, the tricolore's
+   green, white and red, and cream for its white. Square corners, one hard shadow, no glow or gloss.
+   Labels sit in solid blocks of colour, as a broadcast's captions did, and the flag runs along
+   edges as a trim, never over the lettering. The clubs' cards are stickers from an album, and the
+   final score is on a ticket.
+
+   It's one layer over the game's own look (styles.css and each screen's stylesheet), loaded after
+   them: leave this file out of main.tsx and the game is as it was. It borrows the era's look, not
+   the tournament's marks: no logo, mascot, ball or name of the World Cup's.
+
+   The tutorial's and the verdict's stylesheets load with the game, after this one, so what's
+   changed in them is under `.stage`, to come out on top. */
+
+/* Archivo, a grotesque with a width as well as a weight to it (see assets/fonts). The display
+   lettering is a face of its own, drawn wide, as the era's sports titles were; the rest is at its
+   normal width. */
+@font-face {
+  font-family: Archivo;
+  font-style: normal;
+  font-weight: 100 900;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("./assets/fonts/archivo-latin.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: Archivo;
+  font-style: italic;
+  font-weight: 100 900;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("./assets/fonts/archivo-latin-italic.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Archivo Expanded";
+  font-style: normal;
+  font-weight: 100 900;
+  font-stretch: 116%;
+  font-display: swap;
+  src: url("./assets/fonts/archivo-latin.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Archivo Expanded";
+  font-style: italic;
+  font-weight: 100 900;
+  font-stretch: 116%;
+  font-display: swap;
+  src: url("./assets/fonts/archivo-latin-italic.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+:root {
+  /* The tricolore, and cream for its white: paper, not a screen's white. */
+  --verde: #009246;
+  --verde-bright: #22c06a;
+  --verde-deep: #005f2d;
+  --rosso: #ce2b37;
+  --rosso-deep: #8d1620;
+  --crema: #f6efdc;
+  /* The azzurri's blue, and the night over the stadium, a step darker at a time. */
+  --azzurro: #1f53c0;
+  --azzurro-bright: #4a86f5;
+  --notte: #0b1d55;
+  --notte-deep: #050f33;
+  /* The ground every screen's printed on: the blue, a shade deeper towards the foot. */
+  --ground: linear-gradient(180deg, #17409c, #0e2b75);
+  /* A strip of the flag, to lay along an edge. */
+  --tricolore: linear-gradient(
+    90deg,
+    var(--verde) 0 33.3%,
+    var(--crema) 33.3% 66.7%,
+    var(--rosso) 66.7%
+  );
+  /* Square corners, near enough, and the one shadow: hard, straight down, as if cut from card. */
+  --corner: 4px;
+  --drop: 0 4px 0 rgb(3 10 34 / 0.7);
+
+  /* The game's own colours, in these: the teal that picked things out is the tricolore's green. */
+  --navy: var(--notte);
+  --indigo: var(--notte);
+  --violet: var(--rosso);
+  --royal: var(--azzurro);
+  --blue: var(--azzurro-bright);
+  --teal: var(--verde-bright);
+  --teal-deep: var(--verde-deep);
+  --ring: #9dbdff;
+  --azure: var(--crema);
+  --extrude: 0.05em 0.05em 0 var(--notte-deep);
+  --pill: var(--notte-deep);
+  --chalk: rgb(246 239 220 / 0.09);
+  --panel: #12378c;
+  --panel-line: #2c5fcc;
+  --panel-face: #12378c;
+  --panel-rim: rgb(246 239 220 / 0.14);
+  --panel-lift: var(--drop);
+  --soft: #ece5d0;
+  --muted: #b3c1e6;
+  --green: var(--verde-bright);
+  --red: #e2404b;
+  --hud-face: #1a4bb0;
+  --hud-rim: rgb(246 239 220 / 0.45);
+  --hud-shadow: 0 3px 0 rgb(3 10 34 / 0.7);
+  --display: "Archivo Expanded", Archivo, "Arial Black", "Helvetica Neue", Helvetica, sans-serif;
+  --body: Archivo, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+body {
+  background: var(--notte-deep);
+}
+
+/* The grounds */
+
+/* The title: the centre circle and halfway line in chalk, on the blue, the flag along the top. */
+.title {
+  background:
+    var(--tricolore) top / 100% 6px no-repeat,
+    radial-gradient(
+      circle at 50% var(--spot-y, 50%),
+      transparent 149px,
+      var(--chalk) 150px 153px,
+      transparent 154px
+    ),
+    linear-gradient(
+      transparent calc(var(--spot-y, 50%) - 1.5px),
+      var(--chalk) 0 calc(var(--spot-y, 50%) + 1.5px),
+      transparent 0
+    ),
+    var(--ground);
+}
+
+.title-ball {
+  background: none;
+}
+
+.menu {
+  background:
+    var(--tricolore) top / 100% 6px no-repeat,
+    var(--ground);
+}
+
+/* Full time: the title's pitch, the centre circle where the results put it. */
+.results {
+  background:
+    var(--tricolore) top / 100% 6px no-repeat,
+    radial-gradient(
+      circle at 50% 34dvh,
+      transparent 179px,
+      var(--chalk) 180px 183px,
+      transparent 184px
+    ),
+    linear-gradient(
+      transparent calc(34dvh - 1.5px),
+      var(--chalk) 0 calc(34dvh + 1.5px),
+      transparent 0
+    ),
+    var(--ground);
+}
+
+.pack-screen,
+.loading-screen {
+  background:
+    var(--tricolore) top / 100% 6px no-repeat,
+    var(--ground);
+}
+
+/* Lettering */
+
+/* The name: heavy, wide and leaning, in cream, with the one hard shadow. */
+.title h1 {
+  color: var(--crema);
+  font-weight: 900;
+  letter-spacing: -0.01em;
+}
+
+.menu-header h2,
+.results h2 {
+  color: var(--crema);
+  font-style: italic;
+  font-weight: 900;
+  text-shadow: none;
+}
+
+.tagline {
+  color: var(--crema);
+  text-shadow: none;
+  text-wrap: balance;
+}
+
+/* Corners */
+
+.button,
+.icon-button,
+.tab,
+.stepper,
+.field input,
+.login-form input,
+.stage-card,
+.stage-hero,
+.level-row,
+.level-number,
+.board-row,
+.rank-badge,
+.stats div,
+.kit,
+.final,
+.team-card,
+.crest,
+.club,
+.level,
+.player-chip,
+.hud-bug,
+.hud-back,
+.hud-split,
+.play-fullscreen,
+.online-result,
+.live,
+.board-venue,
+.eyebrow,
+.matchday,
+.stage-medals em,
+.unlocked,
+.lock,
+.rarity,
+.pack-hint {
+  border-radius: var(--corner);
+}
+
+.xp-bar,
+.breaks-bar {
+  border-radius: 0;
+}
+
+.stage .lesson-card,
+.stage .lesson-skip,
+.stage .keycap {
+  border-radius: var(--corner);
+}
+
+/* Buttons */
+
+/* The way on: the flag's green, flat, cream lettering, and the hard edge below. */
+.play-button,
+.again-button,
+.free-play-button {
+  background: var(--verde);
+  box-shadow: 0 4px 0 var(--verde-deep);
+  color: var(--crema);
+  font-style: italic;
+  text-shadow: none;
+}
+
+.play-button:active,
+.again-button:active,
+.free-play-button:active {
+  box-shadow: 0 2px 0 var(--verde-deep);
+}
+
+.play-button:disabled {
+  background: #2d4f8c;
+  box-shadow: 0 4px 0 #1b3360;
+  color: rgb(246 239 220 / 0.5);
+}
+
+/* Packs and the finals: the flag's red. */
+.pack-button,
+.pack-tile {
+  background: var(--rosso);
+  box-shadow: 0 4px 0 var(--rosso-deep);
+}
+
+.level-row.level-final {
+  border-color: rgb(246 239 220 / 0.3);
+  background: var(--rosso);
+}
+
+.level-row.level-final .level-number {
+  background: var(--crema);
+  color: var(--rosso);
+}
+
+.level-number,
+.rank-badge {
+  background: var(--notte-deep);
+}
+
+.tab {
+  background: transparent;
+  box-shadow: none;
+}
+
+.tab.active,
+.board-venue.active {
+  border-color: var(--verde);
+  background: var(--verde);
+  color: var(--crema);
+}
+
+.icon-button {
+  background: var(--notte-deep);
+  box-shadow: none;
+}
+
+/* Fields: cream paper to write a name on. */
+.login-form input {
+  border: 0;
+  background: var(--crema);
+  box-shadow: var(--drop);
+  color: var(--notte);
+}
+
+.field input {
+  border-color: var(--panel-rim);
+  background: var(--notte-deep);
+  color: var(--crema);
+}
+
+.stepper button {
+  background: var(--crema);
+  box-shadow: none;
+  color: var(--notte);
+}
+
+/* Tags: who's playing and their level, in solid blocks, as a caption's set. */
+.player-chip,
+.level {
+  border: 0;
+  background: var(--notte-deep);
+}
+
+.level {
+  color: var(--crema);
+}
+
+.level-bar {
+  border-radius: 0;
+  background: rgb(246 239 220 / 0.18);
+}
+
+.level-bar span,
+.xp-bar span {
+  background: var(--verde-bright);
+}
+
+.live {
+  border: 0;
+  background: var(--notte-deep);
+}
+
+/* Stickers */
+
+/* Each club in an album's sticker: cream card, the crest on it, its name printed underneath. */
+.team-card {
+  border: 3px solid #fffaf0;
+  background: var(--crema);
+  box-shadow: var(--drop);
+  color: var(--notte);
+}
+
+.team-card .crest {
+  box-shadow: inset 0 0 0 1px rgb(120 100 60 / 0.2);
+}
+
+.team-card.chosen {
+  border-color: var(--verde);
+  box-shadow:
+    0 0 0 2px var(--verde),
+    var(--drop);
+}
+
+.club.chosen,
+.stage-card.here {
+  border-color: var(--verde-bright);
+}
+
+.stage-card.here {
+  box-shadow: var(--drop);
+}
+
+.kit {
+  background: #1d4bb0;
+}
+
+/* Small things picked out in green rather than teal. */
+.unlocked,
+.online-result.ranked,
+.stage-medals em {
+  background: rgb(34 192 106 / 0.16);
+}
+
+/* The home screen */
+
+/* The name in the middle, with a short rule of the flag under it, on its own: the title's ball is
+   left to the login screen. The centre circle moves down into the room between the name and the
+   venue, so the middle of the screen is the middle of the pitch. */
+.home {
+  --spot-y: 50%;
+}
+
+.home .title-ball {
+  display: none;
+}
+
+.home-hero {
+  width: 100%;
+  text-align: center;
+}
+
+.home h1 {
+  margin-top: 18px;
+  font-size: clamp(48px, 15vw, 64px);
+  line-height: 0.92;
+}
+
+.home h1::after {
+  display: block;
+  width: 96px;
+  height: 8px;
+  margin: 14px auto 0;
+  background: var(--tricolore);
+  content: "";
+}
+
+/* Where the player's playing: the venue's picture in a cream frame, "Playing at" in a block of
+   green, and the way to the stages a cream tab in the corner. */
+.matchday {
+  border: 3px solid var(--crema);
+  box-shadow: var(--drop);
+}
+
+.matchday::after {
+  background: linear-gradient(90deg, rgb(5 15 51 / 0.85) 0, rgb(5 15 51 / 0.5) 50%, transparent);
+}
+
+.matchday-text small {
+  align-self: flex-start;
+  padding: 3px 6px 2px;
+  background: var(--verde);
+  color: var(--crema);
+}
+
+.matchday-text strong {
+  text-shadow: 0 2px 0 rgb(3 10 34 / 0.7);
+}
+
+.matchday-change {
+  right: 0;
+  bottom: 0;
+  padding: 5px 10px 4px;
+  background: var(--crema);
+  color: var(--notte);
+}
+
+.home-learn {
+  color: var(--crema);
+}
+
+/* Leaderboard and Customise: quieter than Play, lettered in cream inside a cream rule. */
+.home-tile {
+  border: 2px solid rgb(246 239 220 / 0.75);
+  background: transparent;
+  box-shadow: none;
+  color: var(--crema);
+}
+
+.home-tile svg {
+  display: none;
+}
+
+.home-top .player-chip {
+  border: 0;
+  border-radius: var(--corner);
+}
+
+/* The scoreboard: a 1990 broadcast's, flat blue, trimmed with the flag along the top, and the
+   clock in a block of cream. */
+.hud-bug::before {
+  height: 3px;
+  background: var(--tricolore);
+}
+
+.hud-box span {
+  color: var(--crema);
+}
+
+.hud-time {
+  background: var(--crema);
+  box-shadow: none;
+  color: var(--notte);
+}
+
+.hud-time span {
+  color: rgb(11 29 85 / 0.75);
+}
+
+.hud-time strong {
+  text-shadow: none;
+}
+
+.hud-time.low {
+  background: var(--rosso);
+}
+
+.hud-streak strong {
+  color: var(--verde-bright);
+}
+
+.hud-strip {
+  background: var(--notte-deep);
+}
+
+/* Shouts over the play, and the tutorial's, in caption blocks trimmed with the flag. */
+.popup {
+  background:
+    var(--tricolore) top / 100% 3px no-repeat,
+    var(--hud-face);
+}
+
+.stage .lesson-say {
+  background:
+    var(--tricolore) top / 100% 3px no-repeat,
+    var(--hud-face);
+}
+
+.stage .lesson-say.nice {
+  background:
+    var(--tricolore) top / 100% 3px no-repeat,
+    var(--verde);
+  color: var(--crema);
+}
+
+.stage .lesson-card {
+  background:
+    var(--tricolore) top / 100% 6px no-repeat,
+    var(--panel-face);
+  box-shadow: 0 6px 0 rgb(3 10 34 / 0.7);
+}
+
+.stage .keycap {
+  background: var(--crema);
+  box-shadow: 0 5px 0 #c9bc97;
+  color: var(--notte);
+}
+
+/* Full time: the final score on a match ticket, cream card with the flag along its top. */
+.final {
+  background:
+    var(--tricolore) top / 100% 6px no-repeat,
+    var(--crema);
+  box-shadow: var(--drop);
+  color: var(--notte);
+}
+
+.final strong {
+  font-style: italic;
+  font-weight: 900;
+}

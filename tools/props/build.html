@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <title>Build the venues' Meshy props</title>
+    <style>
+      body {
+        font:
+          16px/1.5 system-ui,
+          sans-serif;
+        margin: 32px;
+        max-width: 760px;
+      }
+      pre {
+        background: #f2f2f2;
+        padding: 12px;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Build the venues' Meshy props</h1>
+    <p>
+      Makes each venue's Meshy model in <code>tools/props/in/</code> (a GLB, as Meshy downloads it,
+      renamed to the prop's name below) into a <code>prop-&lt;name&gt;.glb</code> for the game, and
+      each of the crowds' Meshy figures that stand still, in <code>tools/crowd/in/</code>, into a
+      <code>crowd-&lt;name&gt;.glb</code>, then downloads them. <code>?only=park-tree,penguin</code>
+      builds just those. See ASSETS.md.
+    </p>
+    <p>
+      Each prop stands on the origin, centred and 1 m tall, since the venues say how tall each one
+      stands. Its pictures are capped at 512 px, as fine as anything that far down the pitch shows,
+      and only the props that should glow keep Meshy's glow map.
+    </p>
+    <pre id="log">Building…</pre>
+    <script type="module">
+      import * as THREE from "three";
+      import { GLTFExporter } from "three/addons/exporters/GLTFExporter.js";
+      import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+
+      /** The props, as named in src/game/props/models.ts. */
+      const PROPS = [
+        "park-tree",
+        "beach-palm",
+        "snow-pine",
+        "moon-lander",
+        "underwater-coral",
+        "volcano-rock",
+        "mars-rover",
+        "space-pylon",
+        "funfair-stall",
+        "castle-tree",
+        "final-trophy",
+        "colosseum-column",
+      ];
+      /** The crowds' figures that stand still, as named in src/game/creatures.ts. */
+      const CROWD = ["penguin", "fish", "ghost"];
+      const BUILDS = [
+        ...PROPS.map((name) => ({ name, from: `/tools/props/in/${name}.glb`, to: `prop-${name}` })),
+        ...CROWD.map((name) => ({
+          name,
+          from: `/tools/crowd/in/${name}.glb`,
+          to: `crowd-${name}`,
+        })),
+      ];
+      /**
+       * The props that glow: the rock's lava and the pylon's neon. Meshy gives
+       * everything a glow map, often not black (a pine's snow glows white in one), and a glow
+       * ignores the venue's light, so the rest lose theirs.
+       */
+      const GLOWS = new Set(["volcano-rock", "space-pylon"]);
+      const log = (line) => (document.getElementById("log").textContent += `\n${line}`);
+
+      const build = async ({ name, from, to }) => {
+        const gltf = await new GLTFLoader().loadAsync(from);
+        const prop = gltf.scene;
+        let triangles = 0;
+        let glows = false;
+        prop.traverse((o) => {
+          if (!o.isMesh) return;
+          const geometry = o.geometry;
+          triangles += (geometry.index?.count ?? geometry.attributes.position.count) / 3;
+          for (const material of [o.material].flat()) {
+            // Colours as JPEG, but the maps that aren't pictures as PNG: JPEG blurs colour between
+            // neighbouring pixels, and in a normal map or a roughness and metal map the colours are
+            // directions and amounts, so the shading comes out blotchy and sparkling.
+            for (const texture of [material.map, material.emissiveMap]) {
+              if (texture) texture.userData.mimeType = "image/jpeg";
+            }
+            for (const texture of [
+              material.normalMap,
+              material.roughnessMap,
+              material.metalnessMap,
+            ]) {
+              if (texture) texture.userData.mimeType = "image/png";
+            }
+            if (material.emissiveMap && !GLOWS.has(name)) {
+              material.emissiveMap = null;
+              material.emissive.setRGB(0, 0, 0);
+            } else if (material.emissiveMap) {
+              glows = true;
+            }
+          }
+        });
+
+        // 1 m tall, standing on the origin, centred.
+        prop.position.set(0, 0, 0);
+        prop.scale.setScalar(1);
+        prop.updateMatrixWorld(true);
+        const box = new THREE.Box3().setFromObject(prop);
+        const k = 1 / (box.max.y - box.min.y);
+        const centre = box.getCenter(new THREE.Vector3());
+        prop.scale.setScalar(k);
+        prop.position.set(-centre.x * k, -box.min.y * k, -centre.z * k);
+        prop.name = name;
+
+        const glb = await new GLTFExporter().parseAsync(prop, {
+          binary: true,
+          maxTextureSize: 512,
+        });
+        log(
+          `${name}: ${Math.round(triangles)} triangles, ${glows ? "glowing" : "no glow"}, ` +
+            `${Math.round(glb.byteLength / 1024)} KB`,
+        );
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(new Blob([glb], { type: "model/gltf-binary" }));
+        link.download = `${to}.glb`;
+        link.textContent = `Download ${to}.glb again`;
+        document.body.append(link, document.createElement("br"));
+        link.click();
+      };
+
+      try {
+        const only = new URLSearchParams(location.search).get("only")?.split(",");
+        for (const one of BUILDS.filter((b) => !only || only.includes(b.name))) {
+          try {
+            await build(one);
+          } catch (error) {
+            log(`${one.name}: skipped, ${error}`);
+          }
+        }
+        log("Downloaded: move the prop-*.glb and crowd-*.glb files to src/game/models/.");
+      } catch (error) {
+        log(`Failed: ${error}`);
+        console.error(error);
+      }
+    </script>
+  </body>
+</html>

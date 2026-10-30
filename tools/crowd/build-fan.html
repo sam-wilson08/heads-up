@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <title>Build fan.glb</title>
+    <style>
+      body {
+        font:
+          16px/1.5 system-ui,
+          sans-serif;
+        margin: 32px;
+        max-width: 760px;
+      }
+      pre {
+        background: #f2f2f2;
+        padding: 12px;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Build fan.glb</h1>
+    <p>
+      Combines the fan Meshy rigged and animated, and its textures, from
+      <code>tools/crowd/in/fan/</code> into one <code>fan.glb</code> for the crowd, then downloads
+      it: <code>fan.fbx</code> (the model with its cheer, from Meshy's animation download, With
+      Skin, at 30 fps), and <code>basecolor.png</code>, <code>normal.png</code>,
+      <code>roughness.png</code> and <code>metallic.png</code>. See ASSETS.md.
+      <code>?figure=fan-woman</code> builds another fan the same way, from
+      <code>tools/crowd/in/fan-woman/fan-woman.fbx</code> into <code>fan-woman.glb</code>, and
+      <code>?figure=alien</code> another crowd's rigged figure, from
+      <code>tools/crowd/in/alien/alien.fbx</code> into <code>crowd-alien.glb</code>.
+    </p>
+    <p>
+      The fan is 1.75 m tall, standing on the origin and facing +Z, as the crowd's figures do. Its
+      fingers' bones go, their skin moving with the hands instead, since no one sees a fan's fingers
+      from the pitch and each bone is work every frame for every fan. Its pictures are capped at 512
+      px, as fine as a fan ever shows, and its clip is called <code>cheer</code>.
+    </p>
+    <pre id="log">Building…</pre>
+    <script type="module">
+      import * as THREE from "three";
+      import { FBXLoader } from "three/addons/loaders/FBXLoader.js";
+      import { GLTFExporter } from "three/addons/exporters/GLTFExporter.js";
+      import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+      import { mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
+
+      /** Which figure: a fan, like the fan or the fan-woman, or another crowd's, like the alien. */
+      const FIGURE = new URLSearchParams(location.search).get("figure") ?? "fan";
+      const OUT = /^fan(-|$)/.test(FIGURE) ? FIGURE : `crowd-${FIGURE}`;
+      const IN = `/tools/crowd/in/${FIGURE}/`;
+      /** How tall a fan is, as the crowd's own are (see src/game/crowd.ts). */
+      const FAN_HEIGHT = 1.75;
+      const log = (line) => (document.getElementById("log").textContent += `\n${line}`);
+
+      const isFinger = (name) => /Hand(Thumb|Index|Middle|Ring|Pinky)\d/.test(name);
+
+      /**
+       * Takes the fingers' bones out of the skeleton: the skin they moved goes with the hand
+       * instead, and their tracks come out of the clip.
+       */
+      const dropFingers = (mesh, clip) => {
+        const bones = mesh.skeleton.bones;
+        const hand = (bone) => {
+          let b = bone;
+          while (b && isFinger(b.name)) b = b.parent;
+          return b;
+        };
+        const kept = bones.filter((b) => !isFinger(b.name));
+        const index = new Map(kept.map((b, i) => [b, i]));
+        const to = bones.map((b) => index.get(isFinger(b.name) ? hand(b) : b));
+        const skinIndex = mesh.geometry.getAttribute("skinIndex");
+        for (let i = 0; i < skinIndex.count; i++) {
+          for (let c = 0; c < 4; c++)
+            skinIndex.setComponent(i, c, to[skinIndex.getComponent(i, c)]);
+        }
+        const inverses = kept.map((b) => mesh.skeleton.boneInverses[bones.indexOf(b)]);
+        for (const b of bones) {
+          if (isFinger(b.name) && b.parent && !isFinger(b.parent.name)) b.parent.remove(b);
+        }
+        mesh.bind(new THREE.Skeleton(kept, inverses), mesh.bindMatrix);
+        clip.tracks = clip.tracks.filter((t) => !isFinger(t.name.split(".")[0]));
+        return bones.length - kept.length;
+      };
+
+      try {
+        const fan = await new FBXLoader().loadAsync(`${IN}${FIGURE}.fbx`);
+        let mesh;
+        fan.traverse((o) => {
+          if (o.isSkinnedMesh) mesh = o;
+        });
+        if (!mesh) throw new Error(`${FIGURE}.fbx has no skinned mesh: download it With Skin`);
+        const clip = fan.animations[0];
+        if (!clip) throw new Error(`${FIGURE}.fbx has no animation: download it with the cheer`);
+        log(`${clip.name}: ${clip.duration.toFixed(2)} s, ${mesh.skeleton.bones.length} bones`);
+        clip.name = "cheer";
+
+        const dropped = dropFingers(mesh, clip);
+        log(`Dropped ${dropped} finger bones: ${mesh.skeleton.bones.length} left`);
+        const before = mesh.geometry.attributes.position.count;
+        mesh.geometry = mergeVertices(mesh.geometry, 1e-4);
+        log(`${before} vertices merged to ${mesh.geometry.attributes.position.count}`);
+
+        // Its height and feet from the bind pose, standing on the origin.
+        fan.position.set(0, 0, 0);
+        fan.scale.setScalar(1);
+        fan.updateMatrixWorld(true);
+        const box = new THREE.Box3().setFromObject(fan);
+        const k = FAN_HEIGHT / (box.max.y - box.min.y);
+        const centre = box.getCenter(new THREE.Vector3());
+        fan.scale.setScalar(k);
+        fan.position.set(-centre.x * k, -box.min.y * k, -centre.z * k);
+
+        const textures = new THREE.TextureLoader();
+        const texture = async (file, colour) => {
+          const t = await textures.loadAsync(`${IN}${file}`);
+          t.colorSpace = colour ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+          // The colours as JPEG, the maps that aren't pictures as PNG: JPEG blurs colour between
+          // neighbouring pixels, which in a normal or metal map makes the shading blotchy.
+          t.userData.mimeType = colour ? "image/jpeg" : "image/png";
+          return t;
+        };
+        mesh.material = new THREE.MeshStandardMaterial({
+          name: "fan",
+          map: await texture("basecolor.png", true),
+          normalMap: await texture("normal.png", false),
+          roughnessMap: await texture("roughness.png", false),
+          metalnessMap: await texture("metallic.png", false),
+          roughness: 1,
+          metalness: 1,
+        });
+        mesh.name = "fan";
+        fan.name = "fan";
+
+        const glb = await new GLTFExporter().parseAsync(fan, {
+          binary: true,
+          animations: [clip],
+          maxTextureSize: 512,
+        });
+
+        // Checks the file itself: what the game will load.
+        const built = await new GLTFLoader().parseAsync(glb, "");
+        const size = new THREE.Box3().setFromObject(built.scene).getSize(new THREE.Vector3());
+        let triangles = 0;
+        built.scene.traverse((o) => {
+          if (o.isMesh)
+            triangles += (o.geometry.index?.count ?? o.geometry.attributes.position.count) / 3;
+        });
+        log(
+          `Size: ${size
+            .toArray()
+            .map((n) => n.toFixed(2))
+            .join(" × ")} m (x × y × z)`,
+        );
+        for (const c of built.animations)
+          log(`${c.name}: ${c.duration.toFixed(2)} s, ${c.tracks.length} tracks`);
+        log(`${Math.round(triangles)} triangles, ${Math.round(glb.byteLength / 1024)} KB`);
+
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(new Blob([glb], { type: "model/gltf-binary" }));
+        link.download = `${OUT}.glb`;
+        link.textContent = `Download ${OUT}.glb again`;
+        document.body.append(link);
+        link.click();
+        log(`Downloaded ${OUT}.glb: move it to src/game/models/.`);
+      } catch (error) {
+        log(`Failed: ${error}`);
+        console.error(error);
+      }
+    </script>
+  </body>
+</html>
